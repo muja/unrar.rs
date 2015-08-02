@@ -62,7 +62,7 @@ impl<'a> Archive<'a> {
         self.open(OpenMode::ListSplit, None, Operation::Skip)
     }
 
-    pub fn extract_to(&self, path: String) -> UnrarResult<OpenArchive> {
+    pub fn extract_to(&self, path: &str) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::Extract, Some(path), Operation::Extract)
     }
 
@@ -71,7 +71,7 @@ impl<'a> Archive<'a> {
     }
 
     pub fn open(&self,
-        mode: OpenMode, path: Option<String>, operation: Operation
+        mode: OpenMode, path: Option<&str>, operation: Operation
     ) -> UnrarResult<OpenArchive> {
         OpenArchive::new(self.filename, mode, self.password, path, operation)
     }
@@ -90,7 +90,7 @@ impl OpenArchive {
         filename: &str,
         mode: OpenMode,
         password: Option<&str>,
-        destination: Option<String>,
+        destination: Option<&str>,
         operation: Operation
     ) -> UnrarResult<Self> {
         let mut data = native::OpenArchiveData::new(
@@ -187,7 +187,7 @@ impl Iterator for OpenArchive {
                 return None
             }
         }
-        let mut next: Option<String> = None;
+        let mut next = None;
         unsafe {
             native::RARSetCallback(self.handle, Self::callback, &mut next as *mut _ as c_long)
         }
