@@ -67,7 +67,7 @@ impl<'a> Archive<'a> {
     }
 
     pub fn test(&self) -> UnrarResult<OpenArchive> {
-        self.open(OpenMode::List, None, Operation::Test)
+        self.open(OpenMode::Extract, None, Operation::Test)
     }
 
     pub fn open(&self,
