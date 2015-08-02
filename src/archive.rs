@@ -1,9 +1,17 @@
 use native;
 use regex::Regex;
-use libc::{c_uint, c_long, c_int, c_char};
+use libc::{c_uint, c_long, c_int};
 use std::str;
-use std::ffi::{CString, CStr};
+use std::ffi::CStr;
 use error::*;
+
+macro_rules! cstr {
+    ($e:expr) => ({
+        let mut owned: String = $e.into();
+        owned.push_str("\0");
+        owned
+    })
+}
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,28 +57,27 @@ impl<'a> Archive<'a> {
         }
     }
 
-    pub fn with_comments(&mut self, comments: &'a mut Vec<u8>) -> &Self {
+    pub fn set_comments(&mut self, comments: &'a mut Vec<u8>) {
         self.comments = Some(comments);
-        self
     }
 
-    pub fn list(&self) -> UnrarResult<OpenArchive> {
+    pub fn list(self) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::List, None, Operation::Skip)
     }
 
-    pub fn list_split(&self) -> UnrarResult<OpenArchive> {
+    pub fn list_split(self) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::ListSplit, None, Operation::Skip)
     }
 
-    pub fn extract_to(&self, path: &str) -> UnrarResult<OpenArchive> {
+    pub fn extract_to(self, path: &str) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::Extract, Some(path), Operation::Extract)
     }
 
-    pub fn test(&self) -> UnrarResult<OpenArchive> {
+    pub fn test(self) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::Extract, None, Operation::Test)
     }
 
-    pub fn open(&self,
+    pub fn open(self,
         mode: OpenMode, path: Option<&str>, operation: Operation
     ) -> UnrarResult<OpenArchive> {
         OpenArchive::new(self.filename, mode, self.password, path, operation)
@@ -80,7 +87,7 @@ impl<'a> Archive<'a> {
 pub struct OpenArchive {
     handle: native::Handle,
     operation: Operation,
-    destination: *const c_char,
+    destination: Option<String>,
     damaged: bool,
     error: Option<UnrarError>
 }
@@ -94,7 +101,7 @@ impl OpenArchive {
         operation: Operation
     ) -> UnrarResult<Self> {
         let mut data = native::OpenArchiveData::new(
-            try!(CString::new(filename)).as_ptr(),
+            cstr!(filename).as_ptr() as *const _,
             mode as u32
         );
         let handle = unsafe {
@@ -105,14 +112,10 @@ impl OpenArchive {
             Code::Success => {
                 if let Some(pw) = password {
                     unsafe {
-                        native::RARSetPassword(handle, try!(CString::new(pw)).as_ptr())
+                        native::RARSetPassword(handle, cstr!(pw).as_ptr() as *const _)
                     }
                 }
-                let dest = if let Some(path) = destination {
-                    try!(CString::new(path)).as_ptr()
-                } else {
-                    0 as *const _
-                };
+                let dest = destination.map(|path| cstr!(path));
                 Ok(OpenArchive {
                     handle: handle,
                     destination: dest,
@@ -201,14 +204,16 @@ impl Iterator for OpenArchive {
                     native::RARProcessFile(
                         self.handle,
                         self.operation as i32,
-                        self.destination,
+                        self.destination.as_ref().map(
+                            |x| x.as_ptr() as *const _
+                        ).unwrap_or(0 as *const _),
                         0 as *const _
                     ) as u32
                 } ).unwrap();
                 match process_result {
                     Code::Success | Code::EOpen => {
                         let mut entry = Entry::from(header);
-                        entry.next = next;
+                        entry.next = next.clone();
                         // EOpen on Process: Next volume not found
                         // =======================================
                         // We return the information first,
@@ -220,7 +225,9 @@ impl Iterator for OpenArchive {
                         // next() => None
                         if process_result == Code::EOpen {
                             self.damaged = true;
-                            self.error = Some(UnrarError::from(process_result, When::Process));
+                            self.error = Some(UnrarError::new(
+                                process_result, When::Process, next.unwrap()
+                            ));
                         }
                         Some(Ok(entry))
                     },

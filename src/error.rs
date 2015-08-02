@@ -1,10 +1,9 @@
 use native;
 use std::result::Result;
-use std::ffi;
 use num::FromPrimitive;
 
 enum_from_primitive! {
-    #[derive(PartialEq, Eq, Debug)]
+    #[derive(PartialEq, Eq, Debug, Clone, Copy)]
     #[repr(i32)]
     pub enum Code {
         Success = native::ERAR_SUCCESS,
@@ -26,7 +25,7 @@ enum_from_primitive! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum When {
     Open,
     Read,
@@ -39,21 +38,20 @@ impl Code {
     }
 }
 
-impl From<ffi::NulError> for UnrarError {
-    fn from(error: ffi::NulError) -> UnrarError {
-        UnrarError::Nul(error)
-    }
-}
-
 #[derive(Debug, PartialEq)]
-pub enum UnrarError {
-    Native(Code, When),
-    Nul(ffi::NulError)
+pub struct UnrarError {
+    pub code: Code,
+    pub when: When,
+    pub data: Option<String>
 }
 
 impl UnrarError {
+    pub fn new(code: Code, when: When, data: String) -> Self {
+        UnrarError { code: code, when: when, data: Some(data) }
+    }
+
     pub fn from(code: Code, when: When) -> Self {
-        UnrarError::Native(code, when)
+        UnrarError { code: code, when: when, data: None }
     }
 }
 

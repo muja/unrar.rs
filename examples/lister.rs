@@ -1,7 +1,8 @@
 extern crate unrar;
 
+use unrar::Archive;
+use unrar::error::{Code, When, UnrarError};
 use std::io::Write;
-use std::fs;
 
 fn main() {
     let args = std::env::args();
@@ -10,25 +11,18 @@ fn main() {
         writeln!(&mut stderr, "Please pass an archive as argument!").unwrap();
         std::process::exit(0)
     });
-    match unrar::Archive::new(&file).list_split() {
+    match Archive::new(&file).list_split() {
         Ok(archive) => {
             for entry in archive {
                 match entry {
-                    Ok(e) => {
-                        println!("{}", e.filename);
-
-                        // TODO: make this API more usable
-                        if let Some(ref next) = e.next {
-                            if let Err(err) = fs::metadata(next) {
-                                writeln!(
-                                    &mut stderr,
-                                    "Couldn't find volume {}: {}", next, err
-                                ).unwrap();
-                                break;
-                            }
-                        }
+                    Ok(e) => println!("{}", e.filename),
+                    Err(UnrarError { code: Code::EOpen, when: When::Process, data }) => {
+                        writeln!(
+                            &mut stderr,
+                            "Couldn't find volume: {}", data.unwrap()
+                        ).unwrap();
                     }
-                    Err(err) => println!("Error: {:?}", err)
+                    Err(err) => println!("Error: {:?}", err.code)
                 }
             }
         },
