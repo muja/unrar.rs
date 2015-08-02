@@ -64,7 +64,6 @@ fn main() {
             0 as *const _
         ) };
         println!("{}", s);
-        println!("{}", process_result);
         match process_result {
             ERAR_SUCCESS => (),
             ERAR_EOPEN => {
