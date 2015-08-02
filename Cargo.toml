@@ -16,3 +16,4 @@ num = "*"
 
 [dependencies.unrar_sys]
 path = "unrar_sys"
+version = "0.1"

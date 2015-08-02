@@ -1,6 +1,6 @@
 # unrar.rs
 
-[![Travis Build Status](https://travis-ci.org/muja/unrar.rs.png)](https://travis-ci.org/muja/unrar.rs)
+[![Travis Build Status](https://travis-ci.org/muja/unrar.rs.svg)](https://travis-ci.org/muja/unrar.rs)
 
 Please look inside the [examples directory](./examples) to see how to use this library!
 
@@ -19,6 +19,19 @@ fn main() {
 Run this example using: `cargo run --example basic_list`.  
 Note that you have to put a `archive.rar` in this directory first.  
 For example, using the `rar` CLI: `rar a archive.rar .`
+
+# Features
+
+- [x] Multipart files
+- [x] Listing archives
+- [x] Extracting them (not fully tested yet)
+- [x] Testing them (not fully tested yet)
+- [x] Encrypted archives with password
+- [ ] Tests
+- [ ] Option to link dynamically or statically
+- [ ] Building unrar from source on build
+- [ ] Basic functionality that only uses filenames / paths (without reading archives)
+- [ ] More documentation / RustDoc
 
 # Contributing
 
