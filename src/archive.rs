@@ -23,7 +23,7 @@ pub enum Operation {
 
 lazy_static! {
     static ref MULTIPART: Regex = Regex::new(r"(\.part)(\d+)(\.rar$)|(\.r?)(\d+)($)").unwrap();
-    static ref REGEX: Regex = Regex::new(&[MULTIPART.as_str(), r"\.rar$"].join("|")).unwrap();
+    static ref REGEX: Regex = Regex::new(&[MULTIPART.as_str(), r"\.rar$"].connect("|")).unwrap();
 }
 
 pub struct Archive<'a> {
