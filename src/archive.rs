@@ -58,6 +58,10 @@ impl<'a> Archive<'a> {
         self.open(OpenMode::List, None, Operation::Skip)
     }
 
+    pub fn list_split(&self) -> UnrarResult<OpenArchive> {
+        self.open(OpenMode::ListSplit, None, Operation::Skip)
+    }
+
     pub fn extract_to(&self, path: String) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::Extract, Some(path), Operation::Extract)
     }
