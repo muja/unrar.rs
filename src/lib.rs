@@ -5,6 +5,7 @@ extern crate num;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate enum_primitive;
 
+pub use archive::Archive;
 pub mod error;
 pub mod archive;
 
