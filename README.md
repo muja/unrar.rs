@@ -1,6 +1,7 @@
 # unrar.rs
 
 [![Travis Build Status](https://travis-ci.org/muja/unrar.rs.svg)](https://travis-ci.org/muja/unrar.rs)
+[![crates.io](http://meritbadge.herokuapp.com/unrar)](https://crates.io/crates/unrar)
 
 Please look inside the [examples directory](./examples) to see how to use this library!
 
