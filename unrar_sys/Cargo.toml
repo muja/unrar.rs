@@ -1,0 +1,11 @@
+[package]
+name = "unrar_sys"
+version = "0.1.0"
+authors = ["Danyel Bayraktar <danyel@webhippie.de>"]
+
+license = "MIT"
+description = "FFI bindings to unrar (with minimal abstractions)"
+repository = "https://github.com/muja/unrar.rs"
+
+[dependencies]
+libc = "0.1"

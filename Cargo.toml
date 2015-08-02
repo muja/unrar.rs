@@ -1,0 +1,14 @@
+[package]
+name = "unrar"
+version = "0.1.0"
+authors = ["Danyel Bayraktar <danyel@webhippie.de>"]
+
+license = "MIT"
+description = "list and extract RAR archives"
+repository = "https://github.com/muja/unrar.rs"
+
+[dependencies]
+libc = "0.1"
+
+[dependencies.unrar_sys]
+path = "unrar_sys"
