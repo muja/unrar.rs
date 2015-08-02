@@ -9,6 +9,10 @@ repository = "https://github.com/muja/unrar.rs"
 
 [dependencies]
 libc = "0.1"
+regex = "0.1.8"
+lazy_static = "0.1.12"
+enum_primitive = "*"
+num = "*"
 
 [dependencies.unrar_sys]
 path = "unrar_sys"
