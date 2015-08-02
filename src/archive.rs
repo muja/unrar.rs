@@ -55,7 +55,7 @@ impl<'a> Archive<'a> {
     }
 
     pub fn list(&self) -> UnrarResult<OpenArchive> {
-        self.open(OpenMode::ListSplit, None, None)
+        self.open(OpenMode::List, None, None)
     }
 
     pub fn extract_to(&self, path: String) -> UnrarResult<OpenArchive> {
