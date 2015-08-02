@@ -55,19 +55,19 @@ impl<'a> Archive<'a> {
     }
 
     pub fn list(&self) -> UnrarResult<OpenArchive> {
-        self.open(OpenMode::List, None, None)
+        self.open(OpenMode::List, None, Operation::Skip)
     }
 
     pub fn extract_to(&self, path: String) -> UnrarResult<OpenArchive> {
-        self.open(OpenMode::Extract, Some(path), Some(Operation::Extract))
+        self.open(OpenMode::Extract, Some(path), Operation::Extract)
     }
 
     pub fn test(&self) -> UnrarResult<OpenArchive> {
-        self.open(OpenMode::List, None, Some(Operation::Test))
+        self.open(OpenMode::List, None, Operation::Test)
     }
 
     pub fn open(&self,
-        mode: OpenMode, path: Option<String>, operation: Option<Operation>
+        mode: OpenMode, path: Option<String>, operation: Operation
     ) -> UnrarResult<OpenArchive> {
         OpenArchive::new(self.filename, mode, self.password, path, operation)
     }
@@ -87,7 +87,7 @@ impl OpenArchive {
         mode: OpenMode,
         password: Option<&str>,
         destination: Option<String>,
-        operation: Option<Operation>
+        operation: Operation
     ) -> UnrarResult<Self> {
         let mut data = native::OpenArchiveData::new(
             try!(CString::new(filename)).as_ptr(),
@@ -114,7 +114,7 @@ impl OpenArchive {
                     destination: dest,
                     damaged: false,
                     error: None,
-                    operation: operation.unwrap_or(Operation::Skip)
+                    operation: operation
                 })
             },
             _ => Err(UnrarError::from(result, When::Open))
