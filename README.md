@@ -1,7 +1,9 @@
 # unrar.rs
 
 [![Travis Build Status](https://travis-ci.org/muja/unrar.rs.svg)](https://travis-ci.org/muja/unrar.rs)
-[![crates.io](http://meritbadge.herokuapp.com/unrar)](https://crates.io/crates/unrar)
+[![crates.io](https://img.shields.io/crates/v/unrar.svg)](https://crates.io/crates/unrar)
+
+High-level wrapper around the unrar C library provided by [rarlab](http://rarlab.com).
 
 Please look inside the [examples directory](./examples) to see how to use this library!
 
@@ -17,9 +19,9 @@ fn main() {
 }
 ```
 
-Run this example using: `cargo run --example basic_list`.  
-Note that you have to put a `archive.rar` in this directory first.  
-For example, using the `rar` CLI: `rar a archive.rar .`
+Run this example: `cargo run --example basic_list`.  
+Note that you need to put an `archive.rar` in the directory first.  
+For example, by using the `rar` CLI: `rar a archive.rar .`
 
 # Features
 
