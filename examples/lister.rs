@@ -7,6 +7,9 @@ use unrar::error::{Code, When, UnrarError};
 use std::io::Write;
 
 fn main() {
+    // Basic args parsing 
+    // Usage: cargo run --example lister path/to/archive.rar
+
     env_logger::init().unwrap();
     let args = std::env::args();
     let mut stderr = std::io::stderr();
@@ -16,23 +19,43 @@ fn main() {
     });
 
     match Archive::new(&file).list_split() {
-        Ok(archive) => {
-            for entry in archive {
-                match entry {
-                    Ok(e) => println!("{}", e),
-                    Err(UnrarError { code: Code::EOpen, when: When::Process, data: Some(e) }) => {
-                        println!("{}", e);
-                        writeln!(
-                            &mut stderr,
-                            "Couldn't find volume: {}", e.next_volume.unwrap()
-                        ).unwrap();
-                    }
-                    Err(err) => println!("Error: {:?}", err.code)
-                }
-            }
+        // Everything okay, just list the archive
+        Ok(archive) => list_archive(archive),
+
+        // If the error's data field holds an OpenArchive, an error occurred while opening,
+        // the archive is partly broken (e.g. broken header), but is still readable from.
+        // In this example, we are still going to use the archive and list its contents.
+        Err(error @ UnrarError { data: Some(_),.. }) => {
+            writeln!(&mut stderr, "Broken archive: {:?}, continuing.", error).unwrap();
+            list_archive(error.data.unwrap());
         },
+        // Irrecoverable failure, do nothing.
         Err(e) => {
-            println!("Error opening: {:?}", e);
+            writeln!(&mut stderr, "Error opening: {:?}", e).unwrap();
         }
     }
+
+    // to be DRY, the archive function is here.
+    fn list_archive(archive: unrar::archive::OpenArchive) {
+        // create a local copy of stderr.
+        let mut stderr = std::io::stderr();
+        for entry in archive {
+            match entry {
+                Ok(e) => println!("{}", e),
+                // EOpen @ process() means that next volume was not found / not readable.
+                // In this case, the partial entry is stored in the data field of that error.
+                Err(UnrarError { code: Code::EOpen, when: When::Process, data: Some(e) }) => {
+                    // print the partial entry
+                    println!("{}", e);
+                    // emit warning that an error occured.
+                    writeln!(
+                        &mut stderr,
+                        "Couldn't find volume: {}", e.next_volume.unwrap()
+                    ).unwrap();
+                    // The iterator will stop by itself, no further action needed.
+                }
+                Err(err) => writeln!(&mut stderr, "Error: {:?}", err.code).unwrap()
+            }
+        }
+    };
 }
