@@ -13,7 +13,11 @@ regex = "0.1.8"
 lazy_static = "0.1.12"
 enum_primitive = "*"
 num = "*"
+log = "0.3"
 
 [dependencies.unrar_sys]
 path = "unrar_sys"
 version = "0.1"
+
+[dev-dependencies]
+env_logger = "*"
