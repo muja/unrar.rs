@@ -88,8 +88,7 @@ pub struct OpenArchive {
     handle: native::Handle,
     operation: Operation,
     destination: Option<String>,
-    damaged: bool,
-    error: Option<UnrarError>
+    damaged: bool
 }
 
 impl OpenArchive {
@@ -108,28 +107,38 @@ impl OpenArchive {
             native::RAROpenArchive(&mut data as *mut _)
         };
         let result = Code::from(data.open_result).unwrap();
-        match result {
-            Code::Success => {
-                if let Some(pw) = password {
-                    unsafe {
-                        native::RARSetPassword(handle, cstr!(pw).as_ptr() as *const _)
-                    }
+        if handle.is_null() {
+            Err(UnrarError::from(result, When::Open))
+        } else {
+            if let Some(pw) = password {
+                unsafe {
+                    native::RARSetPassword(handle, cstr!(pw).as_ptr() as *const _)
                 }
-                let dest = destination.map(|path| cstr!(path));
-                Ok(OpenArchive {
-                    handle: handle,
-                    destination: dest,
-                    damaged: false,
-                    error: None,
-                    operation: operation
-                })
-            },
-            _ => Err(UnrarError::from(result, When::Open))
+            }
+            let dest = destination.map(|path| cstr!(path));
+            let archive = OpenArchive {
+                handle: handle,
+                destination: dest,
+                damaged: false,
+                operation: operation
+            };
+            match result {
+                Code::Success => Ok(archive),
+                _ => Err(UnrarError::new(result, When::Open, archive))
+            }
         }
     }
 
     pub fn process(&mut self) -> UnrarResult<Vec<Entry>> {
-        self.collect()
+        let (ts, es): (Vec<_>, Vec<_>) = self.partition(|x| x.is_ok());
+        let mut results: Vec<_> = ts.into_iter().map(|x| x.unwrap()).collect();
+        match es.into_iter().map(|x| x.unwrap_err()).next() {
+            Some(error) => {
+                error.data.map(|x| results.push(x));
+                Err(UnrarError::new(error.code, error.when, results))
+            },
+            None => Ok(results)
+        }
     }
 
     extern "C" fn callback(msg: c_uint, user_data: c_long, p1: c_long, p2: c_long) -> c_int {
@@ -160,7 +169,8 @@ pub struct Entry {
     pub file_crc: u32,
     pub file_time: u32,
     pub method: u32,
-    pub file_attr: u32
+    pub file_attr: u32,
+    pub next_volume: Option<String>
 }
 
 impl From<native::HeaderData> for Entry {
@@ -174,7 +184,8 @@ impl From<native::HeaderData> for Entry {
             file_crc: header.file_crc,
             file_time: header.file_time,
             method: header.method,
-            file_attr: header.file_attr
+            file_attr: header.file_attr,
+            next_volume: None
         }
     }
 }
@@ -185,12 +196,7 @@ impl Iterator for OpenArchive {
     fn next(&mut self) -> Option<Self::Item> {
         // The damaged flag was set, don't attempt to read any further, stop
         if self.damaged {
-            // If there is an error stored, return that first, and then return None
-            if self.error.is_some() {
-                return Some(Err(self.error.take().unwrap()))
-            } else {
-                return None
-            }
+            return None
         }
         let mut volume = None;
         unsafe {
@@ -214,23 +220,15 @@ impl Iterator for OpenArchive {
                 } ).unwrap();
                 match process_result {
                     Code::Success | Code::EOpen => {
-                        let entry = Entry::from(header);
+                        let mut entry = Entry::from(header);
                         // EOpen on Process: Next volume not found
-                        // =======================================
-                        // We return the information first,
-                        // and set the error flag to return Err on the next `next` call
-                        // and after that, return None.
-                        // Like this:
-                        // next() => Some(Entry("MyFile")) // with flags set correctly etc.
-                        // next() => Some(Err(Code::EOpen, When::Process, "next_volume.partXX.rar"))
-                        // next() => None
                         if process_result == Code::EOpen {
+                            entry.next_volume = volume;
                             self.damaged = true;
-                            self.error = Some(UnrarError::new(
-                                process_result, When::Process, volume.unwrap()
-                            ));
+                            Some(Err(UnrarError::new(process_result, When::Process, entry)))
+                        } else {
+                            Some(Ok(entry))
                         }
-                        Some(Ok(entry))
                     },
                     _ => {
                         self.damaged = true;

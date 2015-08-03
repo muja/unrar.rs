@@ -14,15 +14,17 @@ fn main() {
         writeln!(&mut stderr, "Please pass an archive as argument!").unwrap();
         std::process::exit(0)
     });
+
     match Archive::new(&file).list_split() {
         Ok(archive) => {
             for entry in archive {
                 match entry {
                     Ok(e) => println!("{}", e.filename),
-                    Err(UnrarError { code: Code::EOpen, when: When::Process, data }) => {
+                    Err(UnrarError { code: Code::EOpen, when: When::Process, data: Some(e) }) => {
+                        println!("{}", e.filename);
                         writeln!(
                             &mut stderr,
-                            "Couldn't find volume: {}", data.unwrap()
+                            "Couldn't find volume: {}", e.next_volume.unwrap()
                         ).unwrap();
                     }
                     Err(err) => println!("Error: {:?}", err.code)

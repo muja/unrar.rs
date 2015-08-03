@@ -1,6 +1,7 @@
 use native;
 use std::result::Result;
 use num::FromPrimitive;
+use std::fmt;
 
 enum_from_primitive! {
     #[derive(PartialEq, Eq, Debug, Clone, Copy)]
@@ -38,15 +39,21 @@ impl Code {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct UnrarError {
+#[derive(PartialEq)]
+pub struct UnrarError<T> {
     pub code: Code,
     pub when: When,
-    pub data: Option<String>
+    pub data: Option<T>
 }
 
-impl UnrarError {
-    pub fn new(code: Code, when: When, data: String) -> Self {
+impl<T> fmt::Debug for UnrarError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "UnrarError({:?}, {:?})", self.code, self.when)
+    }
+}
+
+impl<T> UnrarError<T> {
+    pub fn new(code: Code, when: When, data: T) -> Self {
         UnrarError { code: code, when: when, data: Some(data) }
     }
 
@@ -55,4 +62,4 @@ impl UnrarError {
     }
 }
 
-pub type UnrarResult<T> = Result<T, UnrarError>;
+pub type UnrarResult<T> = Result<T, UnrarError<T>>;
