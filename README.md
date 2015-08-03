@@ -5,7 +5,8 @@
 
 High-level wrapper around the unrar C library provided by [rarlab](http://rarlab.com).
 
-Please look inside the [examples directory](./examples) to see how to use this library!
+Please look inside the [examples directory](./examples) to see how to use this library!  
+Specifically the [**lister**](./examples/lister.rs) example is well documented and advanced!
 
 Basic example to list archive entries:
 
