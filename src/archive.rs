@@ -189,11 +189,30 @@ impl Entry {
     pub fn is_split(&self) -> bool {
         self.flags.contains(SPLIT_BEFORE) || self.flags.contains(SPLIT_AFTER)
     }
+
+    pub fn is_directory(&self) -> bool {
+        self.flags.contains(DIRECTORY)
+    }
+
+    pub fn is_encrypted(&self) -> bool {
+        self.flags.contains(ENCRYPTED)
+    }
+
+    pub fn is_file(&self) -> bool {
+        !self.is_directory()
+    }
 }
 
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", self.filename, if self.is_split() { " (partial)" } else { "" })
+        try!(write!(f, "{}", self.filename));
+        if self.is_directory() {
+            try!(write!(f, "/"))
+        }
+        if self.is_split() {
+            try!(write!(f, " (partial)"))
+        }
+        Ok(())
     }
 }
 
