@@ -89,8 +89,7 @@ HANDLE PASCAL RAROpenArchiveEx(struct RAROpenArchiveDataEx *r)
         else
           r->OpenResult=ERAR_BAD_ARCHIVE;
       }
-      delete Data;
-      return NULL;
+      return (HANDLE) Data;
     }
     r->Flags=0;
     
