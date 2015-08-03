@@ -32,10 +32,10 @@ For example, by using the `rar` CLI: `rar a archive.rar .`
 - [x] Testing them (not fully tested yet)
 - [x] Encrypted archives with password
 - [x] Linked statically against the unrar source.
-- [ ] Tests
-- [ ] Building unrar from source on build
+- [x] Build unrar C++ code from source
 - [ ] Basic functionality that only uses filenames / paths (without reading archives)
 - [ ] More documentation / RustDoc
+- [ ] Tests
 
 # Contributing
 
