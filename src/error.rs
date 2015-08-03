@@ -48,7 +48,7 @@ pub struct UnrarError<T> {
 
 impl<T> fmt::Debug for UnrarError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "UnrarError({:?}, {:?})", self.code, self.when)
+        write!(f, "{:?}@{:?}", self.code, self.when)
     }
 }
 
