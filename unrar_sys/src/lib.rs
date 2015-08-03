@@ -137,7 +137,7 @@ pub struct OpenArchiveDataEx {
 
 // ----------------- BINDINGS ----------------- //
 
-#[link(name = "unrar", kind = "dylib")]
+#[link(name = "unrar", kind = "static")]
 extern "C" {
     pub fn RAROpenArchive(data: *mut OpenArchiveData) -> Handle;
 
