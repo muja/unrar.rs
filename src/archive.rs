@@ -128,6 +128,10 @@ impl OpenArchive {
         }
     }
 
+    pub fn process(&mut self) -> UnrarResult<Vec<Entry>> {
+        self.collect()
+    }
+
     extern "C" fn callback(msg: c_uint, user_data: c_long, p1: c_long, p2: c_long) -> c_int {
         // println!("msg: {}, user_data: {}, p1: {}, p2: {}", msg, user_data, p1, p2);
         match msg {
@@ -248,12 +252,6 @@ impl Drop for OpenArchive {
         unsafe {
             native::RARCloseArchive(self.handle);
         }
-    }
-}
-
-impl OpenArchive {
-    pub fn process(&mut self) -> UnrarResult<Vec<Entry>> {
-        self.collect()
     }
 }
 
