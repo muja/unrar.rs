@@ -2,6 +2,7 @@ use native;
 use regex::Regex;
 use libc::{c_uint, c_long, c_int};
 use std::str;
+use std::fmt;
 use std::ffi::CStr;
 use error::*;
 
@@ -161,10 +162,21 @@ impl OpenArchive {
     }
 }
 
+bitflags! {
+    flags EntryFlags: u32 {
+        const SPLIT_BEFORE = 0x1,
+        const SPLIT_AFTER = 0x2,
+        const ENCRYPTED = 0x4,
+        // const RESERVED = 0x8,
+        const SOLID = 0x10,
+        const DIRECTORY = 0x20,
+    }
+}
+
 #[derive(Debug)]
 pub struct Entry {
     pub filename: String,
-    pub flags: u32,
+    pub flags: EntryFlags,
     pub unpacked_size: u32,
     pub file_crc: u32,
     pub file_time: u32,
@@ -173,13 +185,25 @@ pub struct Entry {
     pub next_volume: Option<String>
 }
 
+impl Entry {
+    pub fn is_split(&self) -> bool {
+        self.flags.contains(SPLIT_BEFORE) || self.flags.contains(SPLIT_AFTER)
+    }
+}
+
+impl fmt::Display for Entry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.filename, if self.is_split() { " (partial)" } else { "" })
+    }
+}
+
 impl From<native::HeaderData> for Entry {
     fn from(header: native::HeaderData) -> Self {
         Entry {
             filename: str::from_utf8(
                 unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes()
             ).unwrap().into(),
-            flags: header.flags,
+            flags: EntryFlags::from_bits(header.flags).unwrap(),
             unpacked_size: header.unp_size,
             file_crc: header.file_crc,
             file_time: header.file_time,

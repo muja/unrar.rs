@@ -19,9 +19,9 @@ fn main() {
         Ok(archive) => {
             for entry in archive {
                 match entry {
-                    Ok(e) => println!("{}", e.filename),
+                    Ok(e) => println!("{}", e),
                     Err(UnrarError { code: Code::EOpen, when: When::Process, data: Some(e) }) => {
-                        println!("{}", e.filename);
+                        println!("{}", e);
                         writeln!(
                             &mut stderr,
                             "Couldn't find volume: {}", e.next_volume.unwrap()
