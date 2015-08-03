@@ -151,7 +151,6 @@ impl OpenArchive {
 #[derive(Debug)]
 pub struct Entry {
     pub filename: String,
-    pub next: Option<String>,
     pub flags: u32,
     pub unpacked_size: u32,
     pub file_crc: u32,
@@ -166,7 +165,6 @@ impl From<native::HeaderData> for Entry {
             filename: str::from_utf8(
                 unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes()
             ).unwrap().into(),
-            next: None,
             flags: header.flags,
             unpacked_size: header.unp_size,
             file_crc: header.file_crc,
@@ -190,9 +188,9 @@ impl Iterator for OpenArchive {
                 return None
             }
         }
-        let mut next = None;
+        let mut volume = None;
         unsafe {
-            native::RARSetCallback(self.handle, Self::callback, &mut next as *mut _ as c_long)
+            native::RARSetCallback(self.handle, Self::callback, &mut volume as *mut _ as c_long)
         }
         let mut header = native::HeaderData::default();
         let read_result = Code::from(unsafe {
@@ -212,8 +210,7 @@ impl Iterator for OpenArchive {
                 } ).unwrap();
                 match process_result {
                     Code::Success | Code::EOpen => {
-                        let mut entry = Entry::from(header);
-                        entry.next = next.clone();
+                        let entry = Entry::from(header);
                         // EOpen on Process: Next volume not found
                         // =======================================
                         // We return the information first,
@@ -221,12 +218,12 @@ impl Iterator for OpenArchive {
                         // and after that, return None.
                         // Like this:
                         // next() => Some(Entry("MyFile")) // with flags set correctly etc.
-                        // next() => Some(Err(EOpen))
+                        // next() => Some(Err(Code::EOpen, When::Process, "next_volume.partXX.rar"))
                         // next() => None
                         if process_result == Code::EOpen {
                             self.damaged = true;
                             self.error = Some(UnrarError::new(
-                                process_result, When::Process, next.unwrap()
+                                process_result, When::Process, volume.unwrap()
                             ));
                         }
                         Some(Ok(entry))
