@@ -25,11 +25,11 @@ For example, using the `rar` CLI: `rar a archive.rar .`
 
 - [x] Multipart files
 - [x] Listing archives
-- [x] Extracting them (not fully tested yet)
+- [x] Extracting them
 - [x] Testing them (not fully tested yet)
 - [x] Encrypted archives with password
+- [x] Linked statically against the unrar source.
 - [ ] Tests
-- [ ] Option to link dynamically or statically
 - [ ] Building unrar from source on build
 - [ ] Basic functionality that only uses filenames / paths (without reading archives)
 - [ ] More documentation / RustDoc
