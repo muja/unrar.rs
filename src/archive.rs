@@ -251,6 +251,12 @@ impl Drop for OpenArchive {
     }
 }
 
+impl OpenArchive {
+    pub fn process(&mut self) -> UnrarResult<Vec<Entry>> {
+        self.collect()
+    }
+}
+
 pub fn is_archive(s: &str) -> bool {
     REGEX.find(s).is_some()
 }
