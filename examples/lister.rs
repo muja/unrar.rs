@@ -50,7 +50,7 @@ fn main() {
                     // emit warning that an error occured.
                     writeln!(
                         &mut stderr,
-                        "Couldn't find volume: {}", e.next_volume.unwrap()
+                        "Error: {}", e.next_volume.unwrap()
                     ).unwrap();
                     // The iterator will stop by itself, no further action needed.
                 }
