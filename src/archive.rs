@@ -93,7 +93,7 @@ pub struct OpenArchive {
 }
 
 impl OpenArchive {
-    pub fn new(
+    fn new(
         filename: &str,
         mode: OpenMode,
         password: Option<&str>,
@@ -158,6 +158,69 @@ impl OpenArchive {
                 }
             },
             _ => 0
+        }
+    }
+}
+
+impl Iterator for OpenArchive {
+    type Item = UnrarResult<Entry>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // The damaged flag was set, don't attempt to read any further, stop
+        if self.damaged {
+            return None
+        }
+        let mut volume = None;
+        unsafe {
+            native::RARSetCallback(self.handle, Self::callback, &mut volume as *mut _ as c_long)
+        }
+        let mut header = native::HeaderData::default();
+        let read_result = Code::from(unsafe {
+            native::RARReadHeader(self.handle, &mut header as *mut _) as u32
+        } ).unwrap();
+        match read_result {
+            Code::Success => {
+                let process_result = Code::from(unsafe {
+                    native::RARProcessFile(
+                        self.handle,
+                        self.operation as i32,
+                        self.destination.as_ref().map(
+                            |x| x.as_ptr() as *const _
+                        ).unwrap_or(0 as *const _),
+                        0 as *const _
+                    ) as u32
+                } ).unwrap();
+                match process_result {
+                    Code::Success | Code::EOpen => {
+                        let mut entry = Entry::from(header);
+                        // EOpen on Process: Next volume not found
+                        if process_result == Code::EOpen {
+                            entry.next_volume = volume;
+                            self.damaged = true;
+                            Some(Err(UnrarError::new(process_result, When::Process, entry)))
+                        } else {
+                            Some(Ok(entry))
+                        }
+                    },
+                    _ => {
+                        self.damaged = true;
+                        Some(Err(UnrarError::from(process_result, When::Process)))
+                    }
+                }
+            },
+            Code::EndArchive => None,
+            _ => {
+                self.damaged = true;
+                Some(Err(UnrarError::from(read_result, When::Read)))
+            }
+        }
+    }
+}
+
+impl Drop for OpenArchive {
+    fn drop(&mut self) {
+        unsafe {
+            native::RARCloseArchive(self.handle);
         }
     }
 }
@@ -229,69 +292,6 @@ impl From<native::HeaderData> for Entry {
             method: header.method,
             file_attr: header.file_attr,
             next_volume: None
-        }
-    }
-}
-
-impl Iterator for OpenArchive {
-    type Item = UnrarResult<Entry>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // The damaged flag was set, don't attempt to read any further, stop
-        if self.damaged {
-            return None
-        }
-        let mut volume = None;
-        unsafe {
-            native::RARSetCallback(self.handle, Self::callback, &mut volume as *mut _ as c_long)
-        }
-        let mut header = native::HeaderData::default();
-        let read_result = Code::from(unsafe {
-            native::RARReadHeader(self.handle, &mut header as *mut _) as u32
-        } ).unwrap();
-        match read_result {
-            Code::Success => {
-                let process_result = Code::from(unsafe {
-                    native::RARProcessFile(
-                        self.handle,
-                        self.operation as i32,
-                        self.destination.as_ref().map(
-                            |x| x.as_ptr() as *const _
-                        ).unwrap_or(0 as *const _),
-                        0 as *const _
-                    ) as u32
-                } ).unwrap();
-                match process_result {
-                    Code::Success | Code::EOpen => {
-                        let mut entry = Entry::from(header);
-                        // EOpen on Process: Next volume not found
-                        if process_result == Code::EOpen {
-                            entry.next_volume = volume;
-                            self.damaged = true;
-                            Some(Err(UnrarError::new(process_result, When::Process, entry)))
-                        } else {
-                            Some(Ok(entry))
-                        }
-                    },
-                    _ => {
-                        self.damaged = true;
-                        Some(Err(UnrarError::from(process_result, When::Process)))
-                    }
-                }
-            },
-            Code::EndArchive => None,
-            _ => {
-                self.damaged = true;
-                Some(Err(UnrarError::from(read_result, When::Read)))
-            }
-        }
-    }
-}
-
-impl Drop for OpenArchive {
-    fn drop(&mut self) {
-        unsafe {
-            native::RARCloseArchive(self.handle);
         }
     }
 }
