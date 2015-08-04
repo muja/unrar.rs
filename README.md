@@ -1,7 +1,7 @@
 # unrar.rs
 
 [![Travis Build Status](https://travis-ci.org/muja/unrar.rs.svg)](https://travis-ci.org/muja/unrar.rs)
-[![crates.io](https://img.shields.io/crates/v/unrar.svg)](https://crates.io/crates/unrar)
+[![crates.io](http://meritbadge.herokuapp.com/unrar)](https://crates.io/crates/unrar)
 
 High-level wrapper around the unrar C library provided by [rarlab](http://rarlab.com).
 
