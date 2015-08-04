@@ -21,6 +21,12 @@ enum_from_primitive! {
         SmallBuf = native::ERAR_SMALL_BUF,
         Unknown = native::ERAR_UNKNOWN,
         MissingPassword = native::ERAR_MISSING_PASSWORD,
+        // From the UnRARDLL docs:
+        // When attempting to unpack a reference record (see RAR -oi switch), 
+        // source file for this reference was not found.
+        // Entire archive needs to be unpacked to properly create file references.
+        // This error is returned when attempting to unpack the reference
+        // record without its source file.
         EReference = native::ERAR_EREFERENCE,
         BadPassword = native::ERAR_BAD_PASSWORD
     }
@@ -49,6 +55,33 @@ pub struct UnrarError<T> {
 impl<T> fmt::Debug for UnrarError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}@{:?}", self.code, self.when)
+    }
+}
+
+impl<T> fmt::Display for UnrarError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match (self.code, self.when) {
+            (Code::NoMemory, _) => write!(f, "Not enough memory"),
+            (Code::BadData, When::Open) => write!(f, "Archive header damaged"),
+            (Code::BadData, When::Read) => write!(f, "File header damaged"),
+            (Code::BadData, When::Process) => write!(f, "File CRC error"),
+            (Code::BadArchive, _) => write!(f, "Not a RAR archive"),
+            (Code::UnknownFormat, When::Open) => write!(f, "Unknown encryption"),
+            (Code::UnknownFormat, _) => write!(f, "Unknown archive format"),
+            (Code::EOpen, When::Process) => write!(f, "Could not open next volume"),
+            (Code::EOpen, _) => write!(f, "Could not open archive"),
+            (Code::ECreate, _) => write!(f, "Could not create file"),
+            (Code::EClose, _) => write!(f, "Could not close file"),
+            (Code::ERead, _) => write!(f, "Read error"),
+            (Code::EWrite, _) => write!(f, "Write error"),
+            (Code::SmallBuf, _) => write!(f, "Archive comment was truncated to fit to buffer"),
+            (Code::MissingPassword, _) => write!(f, "Password for encrypted archive not specified"),
+            (Code::EReference, _) => write!(f, "Cannot open file source for reference record"),
+            (Code::BadPassword, _) => write!(f, "Wrong password was specified"),
+            (Code::Unknown, _) => write!(f, "Unknown error"),
+            (Code::EndArchive, _) => write!(f, "Archive end"),
+            (Code::Success, _) => write!(f, "Success"),
+        }
     }
 }
 

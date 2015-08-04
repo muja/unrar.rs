@@ -26,12 +26,12 @@ fn main() {
         // the archive is partly broken (e.g. broken header), but is still readable from.
         // In this example, we are still going to use the archive and list its contents.
         Err(error @ UnrarError { data: Some(_),.. }) => {
-            writeln!(&mut stderr, "Broken archive: {:?}, continuing.", error).unwrap();
+            writeln!(&mut stderr, "Error: {}, continuing.", error).unwrap();
             list_archive(error.data.unwrap());
         },
         // Irrecoverable failure, do nothing.
         Err(e) => {
-            writeln!(&mut stderr, "Error opening: {:?}", e).unwrap();
+            writeln!(&mut stderr, "Error: {}", e).unwrap();
         }
     }
 
@@ -54,7 +54,7 @@ fn main() {
                     ).unwrap();
                     // The iterator will stop by itself, no further action needed.
                 }
-                Err(err) => writeln!(&mut stderr, "Error: {:?}", err.code).unwrap()
+                Err(err) => writeln!(&mut stderr, "Error: {}", err).unwrap()
             }
         }
     };
