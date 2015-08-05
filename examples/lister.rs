@@ -25,7 +25,7 @@ fn main() {
         // If the error's data field holds an OpenArchive, an error occurred while opening,
         // the archive is partly broken (e.g. broken header), but is still readable from.
         // In this example, we are still going to use the archive and list its contents.
-        Err(error @ UnrarError { data: Some(_),.. }) => {
+        Err(error @ UnrarError { data: Some(_), .. }) => {
             writeln!(&mut stderr, "Error: {}, continuing.", error).unwrap();
             list_archive(error.data.unwrap());
         },
