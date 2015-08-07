@@ -34,7 +34,7 @@ For example, by using the `rar` CLI: `rar a archive.rar .`
 - [x] Linked statically against the unrar source.
 - [x] Build unrar C++ code from source
 - [x] Basic functionality that operates on filenames / paths (without reading archives)
-- [ ] More documentation / RustDoc
+- [x] More documentation / RustDoc
 - [ ] Tests
 
 # Contributing
