@@ -18,7 +18,7 @@ fn main() {
         std::process::exit(0)
     });
 
-    match Archive::new(&file).list_split() {
+    match Archive::new(file).list_split() {
         // Everything okay, just list the archive
         Ok(archive) => list_archive(archive),
 
@@ -50,7 +50,7 @@ fn main() {
                     // emit warning that an error occured.
                     writeln!(
                         &mut stderr,
-                        "Error: {}", e.next_volume.unwrap()
+                        "Could not find volume: {}", e.next_volume.unwrap()
                     ).unwrap();
                     // The iterator will stop by itself, no further action needed.
                 }

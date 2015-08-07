@@ -1,10 +1,11 @@
 extern crate unrar;
-
 extern crate env_logger;
+
+use unrar::Archive;
 
 fn main() {
     env_logger::init().unwrap();
-    for entry in unrar::Archive::new("archive.rar").list().unwrap() {
+    for entry in Archive::new("archive.rar".into()).list().unwrap() {
         println!("{}", entry.unwrap());
     }
 }

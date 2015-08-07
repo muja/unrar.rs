@@ -14,7 +14,7 @@ Basic example to list archive entries:
 extern crate unrar;
 
 fn main() {
-    for entry in unrar::Archive::new("archive.rar").list().unwrap() {
+    for entry in unrar::Archive::new("archive.rar".into()).list().unwrap() {
         println!("{}", entry.unwrap());
     }
 }
@@ -33,7 +33,7 @@ For example, by using the `rar` CLI: `rar a archive.rar .`
 - [x] Encrypted archives with password
 - [x] Linked statically against the unrar source.
 - [x] Build unrar C++ code from source
-- [ ] Basic functionality that only uses filenames / paths (without reading archives)
+- [x] Basic functionality that operates on filenames / paths (without reading archives)
 - [ ] More documentation / RustDoc
 - [ ] Tests
 

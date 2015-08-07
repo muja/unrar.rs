@@ -60,27 +60,31 @@ impl<T> fmt::Debug for UnrarError<T> {
 
 impl<T> fmt::Display for UnrarError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::Code::*;
+        use self::When::*;
         match (self.code, self.when) {
-            (Code::NoMemory, _) => write!(f, "Not enough memory"),
-            (Code::BadData, When::Open) => write!(f, "Archive header damaged"),
-            (Code::BadData, When::Read) => write!(f, "File header damaged"),
-            (Code::BadData, When::Process) => write!(f, "File CRC error"),
-            (Code::BadArchive, _) => write!(f, "Not a RAR archive"),
-            (Code::UnknownFormat, When::Open) => write!(f, "Unknown encryption"),
-            (Code::UnknownFormat, _) => write!(f, "Unknown archive format"),
-            (Code::EOpen, When::Process) => write!(f, "Could not open next volume"),
-            (Code::EOpen, _) => write!(f, "Could not open archive"),
-            (Code::ECreate, _) => write!(f, "Could not create file"),
-            (Code::EClose, _) => write!(f, "Could not close file"),
-            (Code::ERead, _) => write!(f, "Read error"),
-            (Code::EWrite, _) => write!(f, "Write error"),
-            (Code::SmallBuf, _) => write!(f, "Archive comment was truncated to fit to buffer"),
-            (Code::MissingPassword, _) => write!(f, "Password for encrypted archive not specified"),
-            (Code::EReference, _) => write!(f, "Cannot open file source for reference record"),
-            (Code::BadPassword, _) => write!(f, "Wrong password was specified"),
-            (Code::Unknown, _) => write!(f, "Unknown error"),
-            (Code::EndArchive, _) => write!(f, "Archive end"),
-            (Code::Success, _) => write!(f, "Success"),
+            (BadData, Read) => write!(f, "File header damaged"),
+            (BadData, Process) => write!(f, "File CRC error"),
+            (UnknownFormat, Open) => write!(f, "Unknown encryption"),
+            (EOpen, Process) => write!(f, "Could not open next volume"),
+            _ => match self.code {
+                BadData => write!(f, "Archive header damaged"),
+                UnknownFormat => write!(f, "Unknown archive format"),
+                EOpen => write!(f, "Could not open archive"),
+                NoMemory => write!(f, "Not enough memory"),
+                BadArchive => write!(f, "Not a RAR archive"),
+                ECreate => write!(f, "Could not create file"),
+                EClose => write!(f, "Could not close file"),
+                ERead => write!(f, "Read error"),
+                EWrite => write!(f, "Write error"),
+                SmallBuf => write!(f, "Archive comment was truncated to fit to buffer"),
+                MissingPassword => write!(f, "Password for encrypted archive not specified"),
+                EReference => write!(f, "Cannot open file source for reference record"),
+                BadPassword => write!(f, "Wrong password was specified"),
+                Unknown => write!(f, "Unknown error"),
+                EndArchive => write!(f, "Archive end"),
+                Success => write!(f, "Success"),
+            }
         }
     }
 }

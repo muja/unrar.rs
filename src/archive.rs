@@ -30,19 +30,20 @@ pub enum Operation {
     Extract = native::RAR_EXTRACT
 }
 
+macro_rules! mp_ext { () => (r"(\.part|\.r?)(\d+)(\.rar|.{0})$") }
 lazy_static! {
-    static ref MULTIPART: Regex = Regex::new(r"(\.part)(\d+)(\.rar$)|(\.r?)(\d+)($)").unwrap();
-    static ref REGEX: Regex = Regex::new(&[MULTIPART.as_str(), r"\.rar$"].connect("|")).unwrap();
+    static ref MULTIPART_EXTENSION: Regex = Regex::new(mp_ext!()).unwrap();
+    static ref EXTENSION: Regex = Regex::new(concat!(mp_ext!(), r"|\.rar$")).unwrap();
 }
 
 pub struct Archive<'a> {
-    filename: &'a str,
-    password: Option<&'a str>,
+    filename: String,
+    password: Option<String>,
     comments: Option<&'a mut Vec<u8>>
 }
 
 impl<'a> Archive<'a> {
-    pub fn new(file: &'a str) -> Self {
+    pub fn new(file: String) -> Self {
         Archive {
             filename: file,
             password: None,
@@ -50,7 +51,7 @@ impl<'a> Archive<'a> {
         }
     }
 
-    pub fn with_password(file: &'a str, password: &'a str) -> Self {
+    pub fn with_password(file: String, password: String) -> Self {
         Archive {
             filename: file,
             password: Some(password),
@@ -62,6 +63,36 @@ impl<'a> Archive<'a> {
         self.comments = Some(comments);
     }
 
+    pub fn is_archive(&self) -> bool {
+        is_archive(&self.filename)
+    }
+
+    pub fn is_multipart(&self) -> bool{
+        is_multipart(&self.filename)
+    }
+
+    pub fn first_part_option(&self) -> Option<String> {
+        MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
+            let mut replacement = String::from(captures.at(1).unwrap());
+            replacement.push_str(&format!("{:01$}", 1, captures.at(2).unwrap().len()));
+            replacement.push_str(captures.at(3).unwrap());
+            self.filename.replace(captures.at(0).unwrap(), &replacement)
+        })
+    }
+
+    pub fn first_part(&self) -> String {
+        match self.first_part_option() {
+            Some(x) => x,
+            None => self.filename.clone()
+        }
+    }
+
+    pub fn as_first_part(&mut self) {
+        if let Some(fp) = self.first_part_option() {
+            self.filename = fp
+        }
+    }
+
     pub fn list(self) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::List, None, Operation::Skip)
     }
@@ -70,7 +101,7 @@ impl<'a> Archive<'a> {
         self.open(OpenMode::ListSplit, None, Operation::Skip)
     }
 
-    pub fn extract_to(self, path: &str) -> UnrarResult<OpenArchive> {
+    pub fn extract_to(self, path: String) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::Extract, Some(path), Operation::Extract)
     }
 
@@ -79,7 +110,7 @@ impl<'a> Archive<'a> {
     }
 
     pub fn open(self,
-        mode: OpenMode, path: Option<&str>, operation: Operation
+        mode: OpenMode, path: Option<String>, operation: Operation
     ) -> UnrarResult<OpenArchive> {
         OpenArchive::new(self.filename, mode, self.password, path, operation)
     }
@@ -94,10 +125,10 @@ pub struct OpenArchive {
 
 impl OpenArchive {
     fn new(
-        filename: &str,
+        filename: String,
         mode: OpenMode,
-        password: Option<&str>,
-        destination: Option<&str>,
+        password: Option<String>,
+        destination: Option<String>,
         operation: Operation
     ) -> UnrarResult<Self> {
         let mut data = native::OpenArchiveData::new(
@@ -297,25 +328,37 @@ impl From<native::HeaderData> for Entry {
 }
 
 pub fn is_archive(s: &str) -> bool {
-    REGEX.find(s).is_some()
+    EXTENSION.find(s).is_some()
 }
 
 pub fn is_multipart(s: &str) -> bool {
-    MULTIPART.find(s).is_some()
+    MULTIPART_EXTENSION.find(s).is_some()
 }
 
 #[cfg(test)]
-pub mod tests {
-    use super::*;
+mod tests {
+    use super::Archive;
 
     #[test]
-    fn test_is_archive() {
-        assert_eq!(is_archive("archive.rar"), true);
-        assert_eq!(is_archive("archive.part1.rar"), true);
-        assert_eq!(is_archive("archive.part100.rar"), true);
-        assert_eq!(is_archive("archive.r10"), true);
-        assert_eq!(is_archive("archive.part1rar"), false);
-        assert_eq!(is_archive("archive.rar\n"), false);
-        assert_eq!(is_archive("archive.zip"), false);
+    fn first_part() {
+        assert_eq!(Archive::new("arc.part0010.rar".into()).first_part(), "arc.part0001.rar");
+        assert_eq!(Archive::new("archive.r100".into()).first_part(), "archive.r001");
+        assert_eq!(Archive::new("archive.r9".into()).first_part(), "archive.r1");
+        assert_eq!(Archive::new("archive.999".into()).first_part(), "archive.001");
+        assert_eq!(Archive::new("archive.rar".into()).first_part(), "archive.rar");
+        assert_eq!(Archive::new("random_string".into()).first_part(), "random_string");
+        assert_eq!(Archive::new("v8/v8.rar".into()).first_part(), "v8/v8.rar");
+        assert_eq!(Archive::new("v8/v8".into()).first_part(), "v8/v8");
+    }
+
+    #[test]
+    fn is_archive() {
+        assert_eq!(super::is_archive("archive.rar"), true);
+        assert_eq!(super::is_archive("archive.part1.rar"), true);
+        assert_eq!(super::is_archive("archive.part100.rar"), true);
+        assert_eq!(super::is_archive("archive.r10"), true);
+        assert_eq!(super::is_archive("archive.part1rar"), false);
+        assert_eq!(super::is_archive("archive.rar\n"), false);
+        assert_eq!(super::is_archive("archive.zip"), false);
     }
 }
