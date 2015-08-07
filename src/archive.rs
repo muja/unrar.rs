@@ -46,6 +46,7 @@ pub struct Archive<'a> {
 pub type Glob = String;
 
 impl<'a> Archive<'a> {
+    /// Creates an `Archive` object to operate on a plain RAR archive.
     pub fn new(file: String) -> Self {
         Archive {
             filename: file,
@@ -54,6 +55,7 @@ impl<'a> Archive<'a> {
         }
     }
 
+    /// Creates an `Archive` object to operate on a password encrypted RAR archive.
     pub fn with_password(file: String, password: String) -> Self {
         Archive {
             filename: file,
@@ -62,18 +64,30 @@ impl<'a> Archive<'a> {
         }
     }
 
+    /// Set the comment buffer of the underlying archive.
+    /// Note: Comments are not supported yet so this method will have no effect.
     pub fn set_comments(&mut self, comments: &'a mut Vec<u8>) {
         self.comments = Some(comments);
     }
 
+    /// Returns `true` if the filename matches a RAR archive.
+    /// 
+    /// This method does not make any FS operations and operates purely on strings.
     pub fn is_archive(&self) -> bool {
         is_archive(&self.filename)
     }
 
-    pub fn is_multipart(&self) -> bool{
+    /// Returns `true` if the filename matches a part of a multipart collection, `false` otherwise
+    /// 
+    /// This method does not make any FS operations and operates purely on strings.
+    pub fn is_multipart(&self) -> bool {
         is_multipart(&self.filename)
     }
 
+    /// Returns a glob string covering all parts of the multipart collection or `None`
+    /// if the underlying archive is a single-part archive.
+    /// 
+    /// This method does not make any FS operations and operates purely on strings.
     pub fn all_parts_option(&self) -> Option<Glob> {
         MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
             let mut replacement = String::from(captures.at(1).unwrap());
@@ -85,6 +99,10 @@ impl<'a> Archive<'a> {
         })
     }
 
+    /// Returns a glob string covering all parts of the multipart collection or
+    /// a copy of the underlying archive's filename if it's a single-part archive.
+    /// 
+    /// This method does not make any FS operations and operates purely on strings.
     pub fn all_parts(&self) -> Glob {
         match self.all_parts_option() {
             Some(x) => x,
@@ -92,7 +110,11 @@ impl<'a> Archive<'a> {
         }
     }
 
-    pub fn nth_part_option(&self, n: i32) -> Option<String> {
+    /// Returns the nth part of this multi-part collection or `None`
+    /// if the underlying archive is single part
+    ///
+    /// This method does not make any FS operations and operates purely on strings.
+    pub fn nth_part(&self, n: i32) -> Option<String> {
         MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
             let mut replacement = String::from(captures.at(1).unwrap());
             // `n` padded with zeroes to the length of archive's number's length
@@ -102,43 +124,55 @@ impl<'a> Archive<'a> {
         })
     }
 
-    pub fn nth_part(&self, n: i32) -> String {
-        match self.nth_part_option(n) {
+    /// Return the first part of the multipart collection or `None`
+    /// if the underlying archive is single part
+    /// 
+    /// This method does not make any FS operations and operates purely on strings.
+    pub fn first_part_option(&self) -> Option<String> {
+        self.nth_part(1)
+    }
+
+    /// Returns the first part of the multipart collection or
+    /// a copy of the underlying archive's filename if it's a single-part archive.
+    /// 
+    /// This method does not make any FS operations and operates purely on strings.
+    pub fn first_part(&self) -> String {
+        match self.nth_part(1) {
             Some(x) => x,
             None => self.filename.clone()
         }
     }
 
-    pub fn first_part_option(&self) -> Option<String> {
-        self.nth_part_option(1)
-    }
-
-    pub fn first_part(&self) -> String {
-        self.nth_part(1)
-    }
-
+    /// Changes the filename to point to the first part of the multipart collection.
+    /// Does nothing if it is a single-part archive.
+    /// 
+    /// This method does not make any FS operations and operates purely on strings.
     pub fn as_first_part(&mut self) {
-        if let Some(fp) = self.first_part_option() {
-            self.filename = fp
-        }
+        self.first_part_option().map(|fp| self.filename = fp);
     }
 
+    /// Opens the underlying archive for listing its contents
     pub fn list(self) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::List, None, Operation::Skip)
     }
 
+    /// Opens the underlying archive for listing its contents
+    /// without omitting or pooling split entries
     pub fn list_split(self) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::ListSplit, None, Operation::Skip)
     }
 
+    /// Opens the underlying archive for extracting to the given directory.
     pub fn extract_to(self, path: String) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::Extract, Some(path), Operation::Extract)
     }
 
+    /// Opens the underlying archive for testing.
     pub fn test(self) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::Extract, None, Operation::Test)
     }
 
+    /// Opens the underlying archive with the provided parameters.
     pub fn open(self,
         mode: OpenMode, path: Option<String>, operation: Operation
     ) -> UnrarResult<OpenArchive> {
