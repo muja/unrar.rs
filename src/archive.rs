@@ -4,6 +4,7 @@ use libc::{c_uint, c_long, c_int};
 use std::str;
 use std::fmt;
 use std::ffi::CStr;
+use std::iter::repeat;
 use error::*;
 
 macro_rules! cstr {
@@ -42,6 +43,8 @@ pub struct Archive<'a> {
     comments: Option<&'a mut Vec<u8>>
 }
 
+pub type Glob = String;
+
 impl<'a> Archive<'a> {
     pub fn new(file: String) -> Self {
         Archive {
@@ -71,20 +74,47 @@ impl<'a> Archive<'a> {
         is_multipart(&self.filename)
     }
 
-    pub fn first_part_option(&self) -> Option<String> {
+    pub fn all_parts_option(&self) -> Option<Glob> {
         MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
             let mut replacement = String::from(captures.at(1).unwrap());
-            replacement.push_str(&format!("{:01$}", 1, captures.at(2).unwrap().len()));
+            replacement.push_str(
+                &repeat("?").take(captures.at(2).unwrap().len()).collect::<String>()
+            );
             replacement.push_str(captures.at(3).unwrap());
             self.filename.replace(captures.at(0).unwrap(), &replacement)
         })
     }
 
-    pub fn first_part(&self) -> String {
-        match self.first_part_option() {
+    pub fn all_parts(&self) -> Glob {
+        match self.all_parts_option() {
             Some(x) => x,
             None => self.filename.clone()
         }
+    }
+
+    pub fn nth_part_option(&self, n: i32) -> Option<String> {
+        MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
+            let mut replacement = String::from(captures.at(1).unwrap());
+            // `n` padded with zeroes to the length of archive's number's length
+            replacement.push_str(&format!("{:01$}", n, captures.at(2).unwrap().len()));
+            replacement.push_str(captures.at(3).unwrap());
+            self.filename.replace(captures.at(0).unwrap(), &replacement)
+        })
+    }
+
+    pub fn nth_part(&self, n: i32) -> String {
+        match self.nth_part_option(n) {
+            Some(x) => x,
+            None => self.filename.clone()
+        }
+    }
+
+    pub fn first_part_option(&self) -> Option<String> {
+        self.nth_part_option(1)
+    }
+
+    pub fn first_part(&self) -> String {
+        self.nth_part(1)
     }
 
     pub fn as_first_part(&mut self) {
@@ -338,6 +368,17 @@ pub fn is_multipart(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::Archive;
+    #[test]
+    fn glob() {
+        assert_eq!(Archive::new("arc.part0010.rar".into()).all_parts(), "arc.part????.rar");
+        assert_eq!(Archive::new("archive.r100".into()).all_parts(), "archive.r???");
+        assert_eq!(Archive::new("archive.r9".into()).all_parts(), "archive.r?");
+        assert_eq!(Archive::new("archive.999".into()).all_parts(), "archive.???");
+        assert_eq!(Archive::new("archive.rar".into()).all_parts(), "archive.rar");
+        assert_eq!(Archive::new("random_string".into()).all_parts(), "random_string");
+        assert_eq!(Archive::new("v8/v8.rar".into()).all_parts(), "v8/v8.rar");
+        assert_eq!(Archive::new("v8/v8".into()).all_parts(), "v8/v8");
+    }
 
     #[test]
     fn first_part() {
