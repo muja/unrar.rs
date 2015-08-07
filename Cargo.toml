@@ -22,3 +22,4 @@ version = "0.2"
 
 [dev-dependencies]
 env_logger = "*"
+tempdir = "*"

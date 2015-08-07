@@ -180,6 +180,7 @@ impl<'a> Archive<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct OpenArchive {
     handle: native::Handle,
     operation: Operation,
