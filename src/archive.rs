@@ -20,7 +20,7 @@ macro_rules! cstr {
 pub enum OpenMode {
     List = native::RAR_OM_LIST,
     Extract = native::RAR_OM_EXTRACT,
-    ListSplit = native::RAR_OM_LIST_INCSPLIT
+    ListSplit = native::RAR_OM_LIST_INCSPLIT,
 }
 
 #[repr(i32)]
@@ -28,7 +28,7 @@ pub enum OpenMode {
 pub enum Operation {
     Skip = native::RAR_SKIP,
     Test = native::RAR_TEST,
-    Extract = native::RAR_EXTRACT
+    Extract = native::RAR_EXTRACT,
 }
 
 macro_rules! mp_ext { () => (r"(\.part|\.r?)(\d+)(\.rar|.{0})$") }
@@ -40,7 +40,7 @@ lazy_static! {
 pub struct Archive<'a> {
     filename: String,
     password: Option<String>,
-    comments: Option<&'a mut Vec<u8>>
+    comments: Option<&'a mut Vec<u8>>,
 }
 
 pub type Glob = String;
@@ -51,7 +51,7 @@ impl<'a> Archive<'a> {
         Archive {
             filename: file,
             password: None,
-            comments: None
+            comments: None,
         }
     }
 
@@ -60,7 +60,7 @@ impl<'a> Archive<'a> {
         Archive {
             filename: file,
             password: Some(password),
-            comments: None
+            comments: None,
         }
     }
 
@@ -71,14 +71,14 @@ impl<'a> Archive<'a> {
     }
 
     /// Returns `true` if the filename matches a RAR archive.
-    /// 
+    ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn is_archive(&self) -> bool {
         is_archive(&self.filename)
     }
 
     /// Returns `true` if the filename matches a part of a multipart collection, `false` otherwise
-    /// 
+    ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn is_multipart(&self) -> bool {
         is_multipart(&self.filename)
@@ -86,14 +86,14 @@ impl<'a> Archive<'a> {
 
     /// Returns a glob string covering all parts of the multipart collection or `None`
     /// if the underlying archive is a single-part archive.
-    /// 
+    ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn all_parts_option(&self) -> Option<Glob> {
         MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
             let mut replacement = String::from(captures.at(1).unwrap());
-            replacement.push_str(
-                &repeat("?").take(captures.at(2).unwrap().len()).collect::<String>()
-            );
+            replacement.push_str(&repeat("?")
+                                      .take(captures.at(2).unwrap().len())
+                                      .collect::<String>());
             replacement.push_str(captures.at(3).unwrap());
             self.filename.replace(captures.at(0).unwrap(), &replacement)
         })
@@ -101,12 +101,12 @@ impl<'a> Archive<'a> {
 
     /// Returns a glob string covering all parts of the multipart collection or
     /// a copy of the underlying archive's filename if it's a single-part archive.
-    /// 
+    ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn all_parts(&self) -> Glob {
         match self.all_parts_option() {
             Some(x) => x,
-            None => self.filename.clone()
+            None => self.filename.clone(),
         }
     }
 
@@ -126,7 +126,7 @@ impl<'a> Archive<'a> {
 
     /// Return the first part of the multipart collection or `None`
     /// if the underlying archive is single part
-    /// 
+    ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn first_part_option(&self) -> Option<String> {
         self.nth_part(1)
@@ -134,18 +134,18 @@ impl<'a> Archive<'a> {
 
     /// Returns the first part of the multipart collection or
     /// a copy of the underlying archive's filename if it's a single-part archive.
-    /// 
+    ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn first_part(&self) -> String {
         match self.nth_part(1) {
             Some(x) => x,
-            None => self.filename.clone()
+            None => self.filename.clone(),
         }
     }
 
     /// Changes the filename to point to the first part of the multipart collection.
     /// Does nothing if it is a single-part archive.
-    /// 
+    ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn as_first_part(&mut self) {
         self.first_part_option().map(|fp| self.filename = fp);
@@ -174,8 +174,10 @@ impl<'a> Archive<'a> {
 
     /// Opens the underlying archive with the provided parameters.
     pub fn open(self,
-        mode: OpenMode, path: Option<String>, operation: Operation
-    ) -> UnrarResult<OpenArchive> {
+                mode: OpenMode,
+                path: Option<String>,
+                operation: Operation)
+                -> UnrarResult<OpenArchive> {
         OpenArchive::new(self.filename, mode, self.password, path, operation)
     }
 }
@@ -185,43 +187,36 @@ pub struct OpenArchive {
     handle: native::Handle,
     operation: Operation,
     destination: Option<String>,
-    damaged: bool
+    damaged: bool,
 }
 
 impl OpenArchive {
-    fn new(
-        filename: String,
-        mode: OpenMode,
-        password: Option<String>,
-        destination: Option<String>,
-        operation: Operation
-    ) -> UnrarResult<Self> {
-        let mut data = native::OpenArchiveData::new(
-            cstr!(filename).as_ptr() as *const _,
-            mode as u32
-        );
-        let handle = unsafe {
-            native::RAROpenArchive(&mut data as *mut _)
-        };
+    fn new(filename: String,
+           mode: OpenMode,
+           password: Option<String>,
+           destination: Option<String>,
+           operation: Operation)
+           -> UnrarResult<Self> {
+        let mut data = native::OpenArchiveData::new(cstr!(filename).as_ptr() as *const _,
+                                                    mode as u32);
+        let handle = unsafe { native::RAROpenArchive(&mut data as *mut _) };
         let result = Code::from(data.open_result).unwrap();
         if handle.is_null() {
             Err(UnrarError::from(result, When::Open))
         } else {
             if let Some(pw) = password {
-                unsafe {
-                    native::RARSetPassword(handle, cstr!(pw).as_ptr() as *const _)
-                }
+                unsafe { native::RARSetPassword(handle, cstr!(pw).as_ptr() as *const _) }
             }
             let dest = destination.map(|path| cstr!(path));
             let archive = OpenArchive {
                 handle: handle,
                 destination: dest,
                 damaged: false,
-                operation: operation
+                operation: operation,
             };
             match result {
                 Code::Success => Ok(archive),
-                _ => Err(UnrarError::new(result, When::Open, archive))
+                _ => Err(UnrarError::new(result, When::Open, archive)),
             }
         }
     }
@@ -233,8 +228,8 @@ impl OpenArchive {
             Some(error) => {
                 error.data.map(|x| results.push(x));
                 Err(UnrarError::new(error.code, error.when, results))
-            },
-            None => Ok(results)
+            }
+            None => Ok(results),
         }
     }
 
@@ -250,10 +245,10 @@ impl OpenArchive {
                     // Next volume not found. -1 means stop
                     native::RAR_VOL_ASK => -1,
                     // Next volume found, 1 means continue
-                    _ => 1
+                    _ => 1,
                 }
-            },
-            _ => 0
+            }
+            _ => 0,
         }
     }
 }
@@ -264,7 +259,7 @@ impl Iterator for OpenArchive {
     fn next(&mut self) -> Option<Self::Item> {
         // The damaged flag was set, don't attempt to read any further, stop
         if self.damaged {
-            return None
+            return None;
         }
         let mut volume = None;
         unsafe {
@@ -272,12 +267,13 @@ impl Iterator for OpenArchive {
         }
         let mut header = native::HeaderData::default();
         let read_result = Code::from(unsafe {
-            native::RARReadHeader(self.handle, &mut header as *mut _) as u32
-        } ).unwrap();
+                              native::RARReadHeader(self.handle, &mut header as *mut _) as u32
+                          })
+                              .unwrap();
         match read_result {
             Code::Success => {
                 let process_result = Code::from(unsafe {
-                    native::RARProcessFile(
+                                         native::RARProcessFile(
                         self.handle,
                         self.operation as i32,
                         self.destination.as_ref().map(
@@ -285,7 +281,8 @@ impl Iterator for OpenArchive {
                         ).unwrap_or(0 as *const _),
                         0 as *const _
                     ) as u32
-                } ).unwrap();
+                                     })
+                                         .unwrap();
                 match process_result {
                     Code::Success | Code::EOpen => {
                         let mut entry = Entry::from(header);
@@ -297,13 +294,13 @@ impl Iterator for OpenArchive {
                         } else {
                             Some(Ok(entry))
                         }
-                    },
+                    }
                     _ => {
                         self.damaged = true;
                         Some(Err(UnrarError::from(process_result, When::Process)))
                     }
                 }
-            },
+            }
             Code::EndArchive => None,
             _ => {
                 self.damaged = true;
@@ -341,7 +338,7 @@ pub struct Entry {
     pub file_time: u32,
     pub method: u32,
     pub file_attr: u32,
-    pub next_volume: Option<String>
+    pub next_volume: Option<String>,
 }
 
 impl Entry {
@@ -378,16 +375,16 @@ impl fmt::Display for Entry {
 impl From<native::HeaderData> for Entry {
     fn from(header: native::HeaderData) -> Self {
         Entry {
-            filename: str::from_utf8(
-                unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes()
-            ).unwrap().into(),
+            filename: str::from_utf8(unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes())
+                          .unwrap()
+                          .into(),
             flags: EntryFlags::from_bits(header.flags).unwrap(),
             unpacked_size: header.unp_size,
             file_crc: header.file_crc,
             file_time: header.file_time,
             method: header.method,
             file_attr: header.file_attr,
-            next_volume: None
+            next_volume: None,
         }
     }
 }
@@ -405,24 +402,34 @@ mod tests {
     use super::Archive;
     #[test]
     fn glob() {
-        assert_eq!(Archive::new("arc.part0010.rar".into()).all_parts(), "arc.part????.rar");
-        assert_eq!(Archive::new("archive.r100".into()).all_parts(), "archive.r???");
+        assert_eq!(Archive::new("arc.part0010.rar".into()).all_parts(),
+                   "arc.part????.rar");
+        assert_eq!(Archive::new("archive.r100".into()).all_parts(),
+                   "archive.r???");
         assert_eq!(Archive::new("archive.r9".into()).all_parts(), "archive.r?");
-        assert_eq!(Archive::new("archive.999".into()).all_parts(), "archive.???");
-        assert_eq!(Archive::new("archive.rar".into()).all_parts(), "archive.rar");
-        assert_eq!(Archive::new("random_string".into()).all_parts(), "random_string");
+        assert_eq!(Archive::new("archive.999".into()).all_parts(),
+                   "archive.???");
+        assert_eq!(Archive::new("archive.rar".into()).all_parts(),
+                   "archive.rar");
+        assert_eq!(Archive::new("random_string".into()).all_parts(),
+                   "random_string");
         assert_eq!(Archive::new("v8/v8.rar".into()).all_parts(), "v8/v8.rar");
         assert_eq!(Archive::new("v8/v8".into()).all_parts(), "v8/v8");
     }
 
     #[test]
     fn first_part() {
-        assert_eq!(Archive::new("arc.part0010.rar".into()).first_part(), "arc.part0001.rar");
-        assert_eq!(Archive::new("archive.r100".into()).first_part(), "archive.r001");
+        assert_eq!(Archive::new("arc.part0010.rar".into()).first_part(),
+                   "arc.part0001.rar");
+        assert_eq!(Archive::new("archive.r100".into()).first_part(),
+                   "archive.r001");
         assert_eq!(Archive::new("archive.r9".into()).first_part(), "archive.r1");
-        assert_eq!(Archive::new("archive.999".into()).first_part(), "archive.001");
-        assert_eq!(Archive::new("archive.rar".into()).first_part(), "archive.rar");
-        assert_eq!(Archive::new("random_string".into()).first_part(), "random_string");
+        assert_eq!(Archive::new("archive.999".into()).first_part(),
+                   "archive.001");
+        assert_eq!(Archive::new("archive.rar".into()).first_part(),
+                   "archive.rar");
+        assert_eq!(Archive::new("random_string".into()).first_part(),
+                   "random_string");
         assert_eq!(Archive::new("v8/v8.rar".into()).first_part(), "v8/v8.rar");
         assert_eq!(Archive::new("v8/v8".into()).first_part(), "v8/v8");
     }

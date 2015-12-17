@@ -22,7 +22,7 @@ enum_from_primitive! {
         Unknown = native::ERAR_UNKNOWN,
         MissingPassword = native::ERAR_MISSING_PASSWORD,
         // From the UnRARDLL docs:
-        // When attempting to unpack a reference record (see RAR -oi switch), 
+        // When attempting to unpack a reference record (see RAR -oi switch),
         // source file for this reference was not found.
         // Entire archive needs to be unpacked to properly create file references.
         // This error is returned when attempting to unpack the reference
@@ -36,7 +36,7 @@ enum_from_primitive! {
 pub enum When {
     Open,
     Read,
-    Process
+    Process,
 }
 
 impl Code {
@@ -49,7 +49,7 @@ impl Code {
 pub struct UnrarError<T> {
     pub code: Code,
     pub when: When,
-    pub data: Option<T>
+    pub data: Option<T>,
 }
 
 impl<T> fmt::Debug for UnrarError<T> {
@@ -67,23 +67,25 @@ impl<T> fmt::Display for UnrarError<T> {
             (BadData, Process) => write!(f, "File CRC error"),
             (UnknownFormat, Open) => write!(f, "Unknown encryption"),
             (EOpen, Process) => write!(f, "Could not open next volume"),
-            _ => match self.code {
-                BadData => write!(f, "Archive header damaged"),
-                UnknownFormat => write!(f, "Unknown archive format"),
-                EOpen => write!(f, "Could not open archive"),
-                NoMemory => write!(f, "Not enough memory"),
-                BadArchive => write!(f, "Not a RAR archive"),
-                ECreate => write!(f, "Could not create file"),
-                EClose => write!(f, "Could not close file"),
-                ERead => write!(f, "Read error"),
-                EWrite => write!(f, "Write error"),
-                SmallBuf => write!(f, "Archive comment was truncated to fit to buffer"),
-                MissingPassword => write!(f, "Password for encrypted archive not specified"),
-                EReference => write!(f, "Cannot open file source for reference record"),
-                BadPassword => write!(f, "Wrong password was specified"),
-                Unknown => write!(f, "Unknown error"),
-                EndArchive => write!(f, "Archive end"),
-                Success => write!(f, "Success"),
+            _ => {
+                match self.code {
+                    BadData => write!(f, "Archive header damaged"),
+                    UnknownFormat => write!(f, "Unknown archive format"),
+                    EOpen => write!(f, "Could not open archive"),
+                    NoMemory => write!(f, "Not enough memory"),
+                    BadArchive => write!(f, "Not a RAR archive"),
+                    ECreate => write!(f, "Could not create file"),
+                    EClose => write!(f, "Could not close file"),
+                    ERead => write!(f, "Read error"),
+                    EWrite => write!(f, "Write error"),
+                    SmallBuf => write!(f, "Archive comment was truncated to fit to buffer"),
+                    MissingPassword => write!(f, "Password for encrypted archive not specified"),
+                    EReference => write!(f, "Cannot open file source for reference record"),
+                    BadPassword => write!(f, "Wrong password was specified"),
+                    Unknown => write!(f, "Unknown error"),
+                    EndArchive => write!(f, "Archive end"),
+                    Success => write!(f, "Success"),
+                }
             }
         }
     }
@@ -91,11 +93,19 @@ impl<T> fmt::Display for UnrarError<T> {
 
 impl<T> UnrarError<T> {
     pub fn new(code: Code, when: When, data: T) -> Self {
-        UnrarError { code: code, when: when, data: Some(data) }
+        UnrarError {
+            code: code,
+            when: when,
+            data: Some(data),
+        }
     }
 
     pub fn from(code: Code, when: When) -> Self {
-        UnrarError { code: code, when: when, data: None }
+        UnrarError {
+            code: code,
+            when: when,
+            data: None,
+        }
     }
 }
 
