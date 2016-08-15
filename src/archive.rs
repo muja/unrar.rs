@@ -319,7 +319,7 @@ impl Drop for OpenArchive {
 }
 
 bitflags! {
-    flags EntryFlags: u32 {
+    pub flags EntryFlags: u32 {
         const SPLIT_BEFORE = 0x1,
         const SPLIT_AFTER = 0x2,
         const ENCRYPTED = 0x4,
