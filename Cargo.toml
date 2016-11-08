@@ -11,15 +11,15 @@ repository = "https://github.com/muja/unrar.rs"
 libc = "0.1"
 regex = "0.1.8"
 lazy_static = "0.1.12"
-enum_primitive = "*"
-num = "*"
+enum_primitive = "0.1"
+num = "0.1"
 log = "0.3"
-bitflags = "*"
+bitflags = "0.6"
 
 [dependencies.unrar_sys]
 path = "unrar_sys"
 version = "0.2"
 
 [dev-dependencies]
-env_logger = "*"
-tempdir = "*"
+env_logger = "0.3"
+tempdir = "0.3"
