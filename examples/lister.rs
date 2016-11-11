@@ -7,7 +7,7 @@ use unrar::error::{Code, When, UnrarError};
 use std::io::Write;
 
 fn main() {
-    // Basic args parsing 
+    // Basic args parsing
     // Usage: cargo run --example lister path/to/archive.rar
 
     env_logger::init().unwrap();
@@ -28,7 +28,7 @@ fn main() {
         Err(error @ UnrarError { data: Some(_), .. }) => {
             writeln!(&mut stderr, "Error: {}, continuing.", error).unwrap();
             list_archive(error.data.unwrap());
-        },
+        }
         // Irrecoverable failure, do nothing.
         Err(e) => {
             writeln!(&mut stderr, "Error: {}", e).unwrap();
@@ -48,13 +48,13 @@ fn main() {
                     // print the partial entry
                     println!("{}", e);
                     // emit warning that an error occured.
-                    writeln!(
-                        &mut stderr,
-                        "Could not find volume: {}", e.next_volume.unwrap()
-                    ).unwrap();
+                    writeln!(&mut stderr,
+                             "Could not find volume: {}",
+                             e.next_volume.unwrap())
+                        .unwrap();
                     // The iterator will stop by itself, no further action needed.
                 }
-                Err(err) => writeln!(&mut stderr, "Error: {}", err).unwrap()
+                Err(err) => writeln!(&mut stderr, "Error: {}", err).unwrap(),
             }
         }
     };

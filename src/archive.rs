@@ -92,8 +92,8 @@ impl<'a> Archive<'a> {
         MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
             let mut replacement = String::from(captures.at(1).unwrap());
             replacement.push_str(&repeat("?")
-                                      .take(captures.at(2).unwrap().len())
-                                      .collect::<String>());
+                .take(captures.at(2).unwrap().len())
+                .collect::<String>());
             replacement.push_str(captures.at(3).unwrap());
             self.filename.replace(captures.at(0).unwrap(), &replacement)
         })
@@ -266,10 +266,9 @@ impl Iterator for OpenArchive {
             native::RARSetCallback(self.handle, Self::callback, &mut volume as *mut _ as c_long)
         }
         let mut header = native::HeaderData::default();
-        let read_result = Code::from(unsafe {
-                              native::RARReadHeader(self.handle, &mut header as *mut _) as u32
-                          })
-                              .unwrap();
+        let read_result =
+            Code::from(unsafe { native::RARReadHeader(self.handle, &mut header as *mut _) as u32 })
+                .unwrap();
         match read_result {
             Code::Success => {
                 let process_result = Code::from(unsafe {
@@ -375,9 +374,10 @@ impl fmt::Display for Entry {
 impl From<native::HeaderData> for Entry {
     fn from(header: native::HeaderData) -> Self {
         Entry {
-            filename: str::from_utf8(unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes())
-                          .unwrap()
-                          .into(),
+            filename: str::from_utf8(unsafe { CStr::from_ptr(header.filename.as_ptr()) }
+                    .to_bytes())
+                .unwrap()
+                .into(),
             flags: EntryFlags::from_bits(header.flags).unwrap(),
             unpacked_size: header.unp_size,
             file_crc: header.file_crc,

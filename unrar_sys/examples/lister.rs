@@ -24,16 +24,13 @@ fn main() {
                 let our_string = unsafe { &mut *(user_data as *mut String) };
                 our_string.push_str(next);
                 -1
-            },
+            }
             (UCM_CHANGEVOLUME, RAR_VOL_NOTIFY) => 1,
-            _ => 0
+            _ => 0,
         }
     }
-    let mut data = OpenArchiveData::new(
-        CString::new(file).unwrap().as_ptr(),
-        RAR_OM_LIST_INCSPLIT
-    );
-    let handle = unsafe {RAROpenArchive(&mut data as *mut _)};
+    let mut data = OpenArchiveData::new(CString::new(file).unwrap().as_ptr(), RAR_OM_LIST_INCSPLIT);
+    let handle = unsafe { RAROpenArchive(&mut data as *mut _) };
     assert_eq!(data.open_result, 0);
     assert_eq!(handle.is_null(), false);
     let mut next_path = String::with_capacity(1024);
@@ -43,7 +40,7 @@ fn main() {
     let mut process_result;
     let mut first = true;
     while result == 0 {
-        result = unsafe {RARReadHeader(handle, &mut header as *mut _)};
+        result = unsafe { RARReadHeader(handle, &mut header as *mut _) };
         if result != ERAR_SUCCESS {
             if result != ERAR_END_ARCHIVE {
                 writeln!(&mut stderr, "Error opening: {}", result).unwrap();
@@ -54,15 +51,9 @@ fn main() {
             writeln!(&mut stderr, "Not beginning of archive! Still continuing").unwrap();
         }
         first = false;
-        let s = str::from_utf8(unsafe {
-            CStr::from_ptr(header.filename.as_ptr())
-        }.to_bytes()).unwrap();
-        process_result = unsafe { RARProcessFile(
-            handle,
-            RAR_SKIP,
-            0 as *const _,
-            0 as *const _
-        ) };
+        let s = str::from_utf8(unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes())
+            .unwrap();
+        process_result = unsafe { RARProcessFile(handle, RAR_SKIP, 0 as *const _, 0 as *const _) };
         println!("{}", s);
         match process_result {
             ERAR_SUCCESS => (),
@@ -71,8 +62,8 @@ fn main() {
                     writeln!(&mut stderr, "Couldn't find volume {}: {}", next_path, err).unwrap();
                     break;
                 }
-            },
-            x => writeln!(&mut stderr, "Error: {}", x).unwrap()
+            }
+            x => writeln!(&mut stderr, "Error: {}", x).unwrap(),
         }
     }
 }

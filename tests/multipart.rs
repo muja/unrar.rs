@@ -7,14 +7,12 @@ use std::io::prelude::*;
 
 #[test]
 fn list_missing_volume() {
-    let expected = vec![
-        "build.rs",
-        "Cargo.toml",
-        "examples/lister.rs",
-        "src/lib.rs",
-        "vendor/unrar/acknow.txt",
-        "vendor/unrar/arccmt.cpp"
-    ];
+    let expected = vec!["build.rs",
+                        "Cargo.toml",
+                        "examples/lister.rs",
+                        "src/lib.rs",
+                        "vendor/unrar/acknow.txt",
+                        "vendor/unrar/arccmt.cpp"];
     let mut archive = Archive::new("data/archive.part1.rar".into()).list().unwrap();
     for (i, e) in archive.by_ref().enumerate().take(expected.len()) {
         assert_eq!(e.unwrap().filename, expected[i]);

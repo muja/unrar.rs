@@ -17,9 +17,9 @@ fn list() {
 #[test]
 fn no_password() {
     let t = TempDir::new("unrar").unwrap();
-    let mut arc = Archive::new("data/crypted.rar".into()).extract_to(
-        t.path().to_str().unwrap().into()
-    ).unwrap();
+    let mut arc = Archive::new("data/crypted.rar".into())
+        .extract_to(t.path().to_str().unwrap().into())
+        .unwrap();
     let err = arc.next().unwrap().unwrap_err();
     assert_eq!(err.code, Code::MissingPassword);
     assert_eq!(err.when, When::Process);
@@ -28,9 +28,11 @@ fn no_password() {
 #[test]
 fn version_cat() {
     let t = TempDir::new("unrar").unwrap();
-    Archive::with_password("data/crypted.rar".into(), "unrar".into()).extract_to(
-        t.path().to_str().unwrap().into()
-    ).unwrap().process().unwrap();
+    Archive::with_password("data/crypted.rar".into(), "unrar".into())
+        .extract_to(t.path().to_str().unwrap().into())
+        .unwrap()
+        .process()
+        .unwrap();
     let mut file = File::open(t.path().join(".gitignore")).unwrap();
     let mut s = String::new();
     file.read_to_string(&mut s).unwrap();

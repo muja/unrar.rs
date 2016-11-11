@@ -14,9 +14,11 @@ fn version_list() {
 #[test]
 fn version_cat() {
     let t = TempDir::new("unrar").unwrap();
-    unrar::Archive::new("data/version.rar".into()).extract_to(
-        t.path().to_str().unwrap().into()
-    ).unwrap().process().unwrap();
+    unrar::Archive::new("data/version.rar".into())
+        .extract_to(t.path().to_str().unwrap().into())
+        .unwrap()
+        .process()
+        .unwrap();
     let mut file = File::open(t.path().join("VERSION")).unwrap();
     let mut s = String::new();
     file.read_to_string(&mut s).unwrap();

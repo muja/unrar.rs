@@ -51,12 +51,7 @@ pub const UCM_NEEDPASSWORDW: c_uint = 4;
 
 pub type ChangeVolProc = extern "C" fn(*mut c_char, c_int) -> c_int;
 pub type ProcessDataProc = extern "C" fn(*mut c_uchar, c_int) -> c_int;
-pub type Callback = extern "C" fn(
-    c_uint,
-    c_long,
-    c_long,
-    c_long
-) -> c_int;
+pub type Callback = extern "C" fn(c_uint, c_long, c_long, c_long) -> c_int;
 
 pub type Handle = *const c_void;
 
@@ -78,7 +73,7 @@ pub struct HeaderData {
     pub comment_buffer: *mut c_char,
     pub comment_buffer_size: c_uint,
     pub comment_size: c_uint,
-    pub comment_state: c_uint
+    pub comment_state: c_uint,
 }
 
 #[repr(C)]
@@ -105,7 +100,7 @@ pub struct HeaderDataEx {
     pub dict_size: c_uint,
     pub hash_type: c_uint,
     pub hash: [c_char; 32],
-    pub reserved: [c_uint; 1014]
+    pub reserved: [c_uint; 1014],
 }
 
 #[repr(C)]
@@ -132,7 +127,7 @@ pub struct OpenArchiveDataEx {
     pub flags: c_uint,
     pub callback: Option<Callback>,
     pub user_data: c_long,
-    pub reserved: [c_uint; 28]
+    pub reserved: [c_uint; 28],
 }
 
 // ----------------- BINDINGS ----------------- //
@@ -145,50 +140,29 @@ extern "C" {
 
     pub fn RARCloseArchive(handle: Handle) -> c_int;
 
-    pub fn RARReadHeader(
-        handle: Handle,
-        header_data: *mut HeaderData
-    ) -> c_int;
+    pub fn RARReadHeader(handle: Handle, header_data: *mut HeaderData) -> c_int;
 
-    pub fn RARReadHeaderEx(
-        handle: Handle,
-        header_data: *mut HeaderDataEx
-    ) -> c_int;
+    pub fn RARReadHeaderEx(handle: Handle, header_data: *mut HeaderDataEx) -> c_int;
 
-    pub fn RARProcessFile(
-        handle: Handle,
-        operation: c_int,
-        dest_path: *const c_char,
-        dest_name: *const c_char
-    ) -> c_int;
+    pub fn RARProcessFile(handle: Handle,
+                          operation: c_int,
+                          dest_path: *const c_char,
+                          dest_name: *const c_char)
+                          -> c_int;
 
-    pub fn RARProcessFileW(
-        handle: Handle,
-        operation: c_int,
-        dest_path: *const wchar_t,
-        dest_name: *const wchar_t
-    ) -> c_int;
+    pub fn RARProcessFileW(handle: Handle,
+                           operation: c_int,
+                           dest_path: *const wchar_t,
+                           dest_name: *const wchar_t)
+                           -> c_int;
 
-    pub fn RARSetCallback(
-        handle: Handle,
-        callback: Callback,
-        user_data: c_long
-    );
+    pub fn RARSetCallback(handle: Handle, callback: Callback, user_data: c_long);
 
-    pub fn RARSetChangeVolProc(
-        handle: Handle,
-        change_vol_proc: ChangeVolProc
-    );
+    pub fn RARSetChangeVolProc(handle: Handle, change_vol_proc: ChangeVolProc);
 
-    pub fn RARSetProcessDataProc(
-        handle: Handle,
-        process_data_proc: ProcessDataProc
-    );
+    pub fn RARSetProcessDataProc(handle: Handle, process_data_proc: ProcessDataProc);
 
-    pub fn RARSetPassword(
-        handle: Handle,
-        password: *const c_char
-    );
+    pub fn RARSetPassword(handle: Handle, password: *const c_char);
 
     pub fn RARGetDllVersion() -> c_int;
 }
@@ -212,7 +186,7 @@ impl Default for HeaderData {
             comment_buffer: 0 as *mut _,
             comment_buffer_size: 0,
             comment_size: 0,
-            comment_state: 0
+            comment_state: 0,
         }
     }
 }
@@ -242,7 +216,7 @@ impl Default for HeaderDataEx {
             dict_size: 0,
             hash_type: 0,
             hash: [0; 32],
-            reserved: [0; 1014]
+            reserved: [0; 1014],
         }
     }
 }
@@ -252,12 +226,11 @@ impl OpenArchiveData {
         Self::with_comment_buffer(archive, mode, 0 as *mut _, 0)
     }
 
-    pub fn with_comment_buffer(
-        archive_name: *const c_char,
-        open_mode: c_uint,
-        buffer: *mut c_char,
-        buffer_size: c_uint
-    ) -> Self {
+    pub fn with_comment_buffer(archive_name: *const c_char,
+                               open_mode: c_uint,
+                               buffer: *mut c_char,
+                               buffer_size: c_uint)
+                               -> Self {
         OpenArchiveData {
             archive_name: archive_name,
             open_mode: open_mode,
@@ -266,7 +239,7 @@ impl OpenArchiveData {
             // set by library:
             open_result: 0,
             comment_size: 0,
-            comment_state: 0
+            comment_state: 0,
         }
     }
 }
@@ -285,7 +258,7 @@ impl Default for OpenArchiveDataEx {
             flags: 0,
             callback: None,
             user_data: 0,
-            reserved: [0; 28]
+            reserved: [0; 28],
         }
     }
 }
@@ -296,6 +269,6 @@ impl Default for OpenArchiveDataEx {
 mod tests {
     #[test]
     fn test_version() {
-        assert_eq!(unsafe{super::RARGetDllVersion()}, 7);
+        assert_eq!(unsafe { super::RARGetDllVersion() }, 7);
     }
 }
