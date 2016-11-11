@@ -361,12 +361,12 @@ impl Entry {
 
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}", self.filename));
+        write!(f, "{}", self.filename)?;
         if self.is_directory() {
-            try!(write!(f, "/"))
+            write!(f, "/")?
         }
         if self.is_split() {
-            try!(write!(f, " (partial)"))
+            write!(f, " (partial)")?
         }
         Ok(())
     }
