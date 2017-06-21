@@ -77,7 +77,7 @@ void ListArchive(CommandData *Cmd)
 #ifndef SFX_MODULE
             // Only RAR 1.5 archives store the volume number in end record.
             if (Arc.EndArcHead.StoreVolNumber && Arc.Format==RARFMT15)
-              swprintf(VolNumText,ASIZE(VolNumText),L"%.10ls %d",St(MListVolume),Arc.VolNumber+1);
+              swprintf(VolNumText,ASIZE(VolNumText),L"%.10ls %u",St(MListVolume),Arc.VolNumber+1);
 #endif
             if (Technical && ShowService)
             {
@@ -149,9 +149,7 @@ void ListArchive(CommandData *Cmd)
         if (Cmd->VolSize!=0 && (Arc.FileHead.SplitAfter ||
             Arc.GetHeaderType()==HEAD_ENDARC && Arc.EndArcHead.NextVolume) &&
             MergeArchive(Arc,NULL,false,Cmd->Command[0]))
-        {
           Arc.Seek(0,SEEK_SET);
-        }
         else
 #endif
           break;
@@ -215,7 +213,7 @@ void ListFileHeader(Archive &Arc,FileHeader &hd,bool &TitleShown,bool Verbose,bo
     TitleShown=true;
   }
 
-  wchar UnpSizeText[20],PackSizeText[20];
+  wchar UnpSizeText[30],PackSizeText[30];
   if (hd.UnpSize==INT64NDF)
     wcscpy(UnpSizeText,L"?");
   else
@@ -405,7 +403,7 @@ void ListFileHeader(Archive &Arc,FileHeader &hd,bool &TitleShown,bool Verbose,bo
       else
         mprintf(L"????????  ");
   }
-  mprintf(L"%-12ls",Name);
+  mprintf(L"%ls",Name);
 }
 
 /*
@@ -435,13 +433,13 @@ void ListFileAttr(uint A,HOST_SYSTEM_TYPE HostType,wchar *AttrStr,size_t AttrSiz
   {
     case HSYS_WINDOWS:
       swprintf(AttrStr,AttrSize,L"%c%c%c%c%c%c%c",
-              (A & 0x2000) ? 'I' : '.',  // Not content indexed.
-              (A & 0x0800) ? 'C' : '.',  // Compressed.
-              (A & 0x0020) ? 'A' : '.',  // Archive.
-              (A & 0x0010) ? 'D' : '.',  // Directory.
-              (A & 0x0004) ? 'S' : '.',  // System.
-              (A & 0x0002) ? 'H' : '.',  // Hidden.
-              (A & 0x0001) ? 'R' : '.'); // Read-only.
+              (A & 0x2000)!=0 ? 'I' : '.',  // Not content indexed.
+              (A & 0x0800)!=0 ? 'C' : '.',  // Compressed.
+              (A & 0x0020)!=0 ? 'A' : '.',  // Archive.
+              (A & 0x0010)!=0 ? 'D' : '.',  // Directory.
+              (A & 0x0004)!=0 ? 'S' : '.',  // System.
+              (A & 0x0002)!=0 ? 'H' : '.',  // Hidden.
+              (A & 0x0001)!=0 ? 'R' : '.'); // Read-only.
       break;
     case HSYS_UNIX:
       switch (A & 0xF000)
@@ -459,13 +457,13 @@ void ListFileAttr(uint A,HOST_SYSTEM_TYPE HostType,wchar *AttrStr,size_t AttrSiz
       swprintf(AttrStr+1,AttrSize-1,L"%c%c%c%c%c%c%c%c%c",
               (A & 0x0100) ? 'r' : '-',
               (A & 0x0080) ? 'w' : '-',
-              (A & 0x0040) ? ((A & 0x0800) ? 's':'x'):((A & 0x0800) ? 'S':'-'),
+              (A & 0x0040) ? ((A & 0x0800)!=0 ? 's':'x'):((A & 0x0800)!=0 ? 'S':'-'),
               (A & 0x0020) ? 'r' : '-',
               (A & 0x0010) ? 'w' : '-',
-              (A & 0x0008) ? ((A & 0x0400) ? 's':'x'):((A & 0x0400) ? 'S':'-'),
+              (A & 0x0008) ? ((A & 0x0400)!=0 ? 's':'x'):((A & 0x0400)!=0 ? 'S':'-'),
               (A & 0x0004) ? 'r' : '-',
               (A & 0x0002) ? 'w' : '-',
-              (A & 0x0001) ? 'x' : '-');
+              (A & 0x0001) ? ((A & 0x200)!=0 ? 't' : 'x') : '-');
       break;
     case HSYS_UNKNOWN:
       wcscpy(AttrStr,L"?");
