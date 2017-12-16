@@ -46,3 +46,10 @@ Pull requests are welcome!
 # Help
 
 If you need help using the library, ping me at irc.mozilla.org, my handle is **danyel**
+
+# License
+
+While this crate uses the MIT license for the Rust parts,
+the embedded [C++ library](./unrar_sys/vendor/unrar) has a different license.
+
+For more informations, see its [license file](./unrar_sys/vendor/unrar/license.txt).
