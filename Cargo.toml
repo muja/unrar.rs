@@ -1,6 +1,6 @@
 [package]
 name = "unrar"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Danyel Bayraktar <cydrop@gmail.com>"]
 
 license = "MIT"
