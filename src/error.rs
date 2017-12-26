@@ -63,30 +63,26 @@ impl<T> fmt::Display for UnrarError<T> {
         use self::Code::*;
         use self::When::*;
         match (self.code, self.when) {
+            (BadData, Open) => write!(f, "Archive header damaged"),
             (BadData, Read) => write!(f, "File header damaged"),
             (BadData, Process) => write!(f, "File CRC error"),
             (UnknownFormat, Open) => write!(f, "Unknown encryption"),
             (EOpen, Process) => write!(f, "Could not open next volume"),
-            _ => {
-                match self.code {
-                    BadData => write!(f, "Archive header damaged"),
-                    UnknownFormat => write!(f, "Unknown archive format"),
-                    EOpen => write!(f, "Could not open archive"),
-                    NoMemory => write!(f, "Not enough memory"),
-                    BadArchive => write!(f, "Not a RAR archive"),
-                    ECreate => write!(f, "Could not create file"),
-                    EClose => write!(f, "Could not close file"),
-                    ERead => write!(f, "Read error"),
-                    EWrite => write!(f, "Write error"),
-                    SmallBuf => write!(f, "Archive comment was truncated to fit to buffer"),
-                    MissingPassword => write!(f, "Password for encrypted archive not specified"),
-                    EReference => write!(f, "Cannot open file source for reference record"),
-                    BadPassword => write!(f, "Wrong password was specified"),
-                    Unknown => write!(f, "Unknown error"),
-                    EndArchive => write!(f, "Archive end"),
-                    Success => write!(f, "Success"),
-                }
-            }
+            (UnknownFormat, _) => write!(f, "Unknown archive format"),
+            (EOpen, _) => write!(f, "Could not open archive"),
+            (NoMemory, _) => write!(f, "Not enough memory"),
+            (BadArchive, _) => write!(f, "Not a RAR archive"),
+            (ECreate, _) => write!(f, "Could not create file"),
+            (EClose, _) => write!(f, "Could not close file"),
+            (ERead, _) => write!(f, "Read error"),
+            (EWrite, _) => write!(f, "Write error"),
+            (SmallBuf, _) => write!(f, "Archive comment was truncated to fit to buffer"),
+            (MissingPassword, _) => write!(f, "Password for encrypted archive not specified"),
+            (EReference, _) => write!(f, "Cannot open file source for reference record"),
+            (BadPassword, _) => write!(f, "Wrong password was specified"),
+            (Unknown, _) => write!(f, "Unknown error"),
+            (EndArchive, _) => write!(f, "Archive end"),
+            (Success, _) => write!(f, "Success"),
         }
     }
 }
