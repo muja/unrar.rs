@@ -5,6 +5,7 @@ use std::str;
 use std::fmt;
 use std::ffi::CStr;
 use std::iter::repeat;
+use std::slice;
 use error::*;
 
 macro_rules! cstr {
@@ -180,6 +181,12 @@ impl<'a> Archive<'a> {
                 -> UnrarResult<OpenArchive> {
         OpenArchive::new(self.filename, mode, self.password, path, operation)
     }
+
+    /// Returns the bytes for a particular file.
+    pub fn read_bytes(self, entry: &str) -> UnrarResult<Vec<u8>> {
+        let archive = self.open(OpenMode::Extract, None, Operation::Test).unwrap();
+        archive.read_bytes(entry)
+    }
 }
 
 #[derive(Debug)]
@@ -250,6 +257,66 @@ impl OpenArchive {
             }
             _ => 0,
         }
+    }
+
+    extern "C" fn callback_bytes(msg: c_uint, user_data: c_long, p1: c_long, p2: c_long) -> c_int {
+        // println!("msg: {}, user_data: {}, p1: {}, p2: {}", msg, user_data, p1, p2);
+        match msg {
+            native::UCM_PROCESSDATA => {
+                let vec = unsafe { &mut *(user_data as *mut Vec<u8>) };
+                let bytes = unsafe { slice::from_raw_parts(p1 as *const _, p2 as usize) };
+                vec.extend_from_slice(bytes);
+                1
+            }
+            _ => 0,
+        }
+    }
+
+    pub fn read_bytes(self, entry_filename: &str) -> UnrarResult<Vec<u8>> {
+        let mut bytes = Vec::new();
+        loop {
+            let mut header = native::HeaderData::default();
+            let read_result =
+                Code::from(unsafe { native::RARReadHeader(self.handle, &mut header as *mut _) as u32 })
+                .unwrap();
+            match read_result {
+                Code::Success => {
+                    let mut entry = Entry::from(header);
+                    if entry.filename != entry_filename {
+                        let process_result = Code::from(unsafe {
+                            native::RARProcessFile(
+                                self.handle,
+                                Operation::Skip as i32,
+                                0 as *const _,
+                                0 as *const _
+                                ) as u32 }).unwrap();
+                        match process_result {
+                            Code::Success => continue,
+                            _ => return Err(UnrarError::from(process_result, When::Process))
+                        }
+                    }
+
+                    // So we have the right entry, now set the
+                    // callback and read it
+                    unsafe {
+                        native::RARSetCallback(self.handle, Self::callback_bytes, &mut bytes as *mut _ as c_long)
+                    }
+                    let process_result = Code::from(unsafe {
+                        native::RARProcessFile(
+                            self.handle,
+                            Operation::Test as i32,
+                            0 as *const _,
+                            0 as *const _
+                            ) as u32 }).unwrap();
+                    match process_result {
+                        Code::Success => break,
+                        _ => return Err(UnrarError::from(process_result, When::Process))
+                    }
+                }
+                _ => return Err(UnrarError::from(read_result, When::Read))
+            }
+        }
+        Ok(bytes)
     }
 }
 
