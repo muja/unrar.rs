@@ -183,9 +183,8 @@ impl<'a> Archive<'a> {
     }
 
     /// Returns the bytes for a particular file.
-    pub fn read_bytes(self, entry: &str) -> UnrarResult<Vec<u8>> {
-        let archive = self.open(OpenMode::Extract, None, Operation::Test).unwrap();
-        archive.read_bytes(entry)
+    pub fn read_bytes(self, entry: &str) -> Result<Vec<u8>, UnrarError<OpenArchive>> {
+        self.open(OpenMode::Extract, None, Operation::Test)?.read_bytes(entry)
     }
 }
 
@@ -272,7 +271,7 @@ impl OpenArchive {
         }
     }
 
-    pub fn read_bytes(self, entry_filename: &str) -> UnrarResult<Vec<u8>> {
+    pub fn read_bytes(self, entry_filename: &str) -> Result<Vec<u8>, UnrarError<OpenArchive>> {
         let mut bytes = Vec::new();
         loop {
             let mut header = native::HeaderData::default();
@@ -292,7 +291,7 @@ impl OpenArchive {
                                 ) as u32 }).unwrap();
                         match process_result {
                             Code::Success => continue,
-                            _ => return Err(UnrarError::from(process_result, When::Process))
+                            _ => return Err(UnrarError::new(process_result, When::Process, self))
                         }
                     }
 
@@ -310,10 +309,10 @@ impl OpenArchive {
                             ) as u32 }).unwrap();
                     match process_result {
                         Code::Success => break,
-                        _ => return Err(UnrarError::from(process_result, When::Process))
+                        _ => return Err(UnrarError::new(process_result, When::Process, self))
                     }
                 }
-                _ => return Err(UnrarError::from(read_result, When::Read))
+                _ => return Err(UnrarError::new(read_result, When::Read, self))
             }
         }
         Ok(bytes)
