@@ -21,6 +21,9 @@ pub const ERAR_MISSING_PASSWORD: c_int = 22;
 pub const ERAR_EREFERENCE: c_int = 23;
 pub const ERAR_BAD_PASSWORD: c_int = 24;
 
+pub const LC_ALL: c_int = 6;
+
+
 pub const RAR_OM_LIST: c_uint = 0;
 pub const RAR_OM_EXTRACT: c_uint = 1;
 pub const RAR_OM_LIST_INCSPLIT: c_uint = 2;
@@ -167,6 +170,11 @@ extern "C" {
     pub fn RARGetDllVersion() -> c_int;
 }
 
+extern "C" {
+        pub fn setlocale(category: c_int, locale: *const c_char) -> *mut c_char;
+}
+
+
 // ----------------- MINIMAL ABSTRACTIONS ----------------- //
 
 impl Default for HeaderData {
@@ -223,6 +231,10 @@ impl Default for HeaderDataEx {
 
 impl OpenArchiveData {
     pub fn new(archive: *const c_char, mode: c_uint) -> Self {
+        unsafe {
+            let _ = setlocale(LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const i8);
+        }
+
         Self::with_comment_buffer(archive, mode, 0 as *mut _, 0)
     }
 
