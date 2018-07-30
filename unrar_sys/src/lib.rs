@@ -233,7 +233,7 @@ impl Default for HeaderDataEx {
 impl OpenArchiveData {
     pub fn new(archive: *const c_char, mode: c_uint) -> Self {
         unsafe {
-            let _ = setlocale(LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const i8);
+            let _ = setlocale(LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const c_char);
         }
 
         Self::with_comment_buffer(archive, mode, 0 as *mut _, 0)
