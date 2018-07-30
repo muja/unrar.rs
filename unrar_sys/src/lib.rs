@@ -1,6 +1,7 @@
 extern crate libc;
 
-use libc::{c_int, c_uint, wchar_t, c_long, c_char, c_void, c_uchar};
+use libc::{c_int, c_uint, wchar_t, c_long, c_void, c_uchar};
+use std::os::raw::c_char;
 
 // ----------------- CONSTANTS ----------------- //
 
