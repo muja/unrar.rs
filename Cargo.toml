@@ -8,9 +8,9 @@ description = "list and extract RAR archives"
 repository = "https://github.com/muja/unrar.rs"
 
 [dependencies]
-libc = "0.1"
+libc = "0.2"
 regex = "0.1.8"
-lazy_static = "0.1.12"
+lazy_static = "1"
 enum_primitive = "0.1"
 num = "0.1"
 log = "0.3"
