@@ -318,13 +318,13 @@ impl Drop for OpenArchive {
 }
 
 bitflags! {
-    pub flags EntryFlags: u32 {
-        const SPLIT_BEFORE = 0x1,
-        const SPLIT_AFTER = 0x2,
-        const ENCRYPTED = 0x4,
-        // const RESERVED = 0x8,
-        const SOLID = 0x10,
-        const DIRECTORY = 0x20,
+    pub struct EntryFlags: u32 {
+        const SPLIT_BEFORE = 0x1;
+        const SPLIT_AFTER = 0x2;
+        const ENCRYPTED = 0x4;
+        // const RESERVED = 0x8;
+        const SOLID = 0x10;
+        const DIRECTORY = 0x20;
     }
 }
 
@@ -342,15 +342,15 @@ pub struct Entry {
 
 impl Entry {
     pub fn is_split(&self) -> bool {
-        self.flags.contains(SPLIT_BEFORE) || self.flags.contains(SPLIT_AFTER)
+        self.flags.contains(EntryFlags::SPLIT_BEFORE) || self.flags.contains(EntryFlags::SPLIT_AFTER)
     }
 
     pub fn is_directory(&self) -> bool {
-        self.flags.contains(DIRECTORY)
+        self.flags.contains(EntryFlags::DIRECTORY)
     }
 
     pub fn is_encrypted(&self) -> bool {
-        self.flags.contains(ENCRYPTED)
+        self.flags.contains(EntryFlags::ENCRYPTED)
     }
 
     pub fn is_file(&self) -> bool {

@@ -14,7 +14,7 @@ lazy_static = "1"
 enum_primitive = "0.1"
 num = "0.1"
 log = "0.3"
-bitflags = "0.6"
+bitflags = "1"
 
 [dependencies.unrar_sys]
 path = "unrar_sys"
