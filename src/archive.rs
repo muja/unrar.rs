@@ -31,7 +31,7 @@ pub enum Operation {
     Extract = native::RAR_EXTRACT,
 }
 
-macro_rules! mp_ext { () => (r"(\.part|\.r?)(\d+)(\.rar|.{0})$") }
+macro_rules! mp_ext { () => (r"(\.part|\.r?)(\d+)((?:\.rar)?)$") }
 lazy_static! {
     static ref MULTIPART_EXTENSION: Regex = Regex::new(mp_ext!()).unwrap();
     static ref EXTENSION: Regex = Regex::new(concat!(mp_ext!(), r"|\.rar$")).unwrap();
@@ -90,12 +90,12 @@ impl<'a> Archive<'a> {
     /// This method does not make any FS operations and operates purely on strings.
     pub fn all_parts_option(&self) -> Option<Glob> {
         MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
-            let mut replacement = String::from(captures.at(1).unwrap());
+            let mut replacement = String::from(captures.get(1).unwrap().as_str());
             replacement.push_str(&repeat("?")
-                .take(captures.at(2).unwrap().len())
+                .take(captures.get(2).unwrap().as_str().len())
                 .collect::<String>());
-            replacement.push_str(captures.at(3).unwrap());
-            self.filename.replace(captures.at(0).unwrap(), &replacement)
+            replacement.push_str(captures.get(3).unwrap().as_str());
+            self.filename.replace(captures.get(0).unwrap().as_str(), &replacement)
         })
     }
 
@@ -116,11 +116,11 @@ impl<'a> Archive<'a> {
     /// This method does not make any FS operations and operates purely on strings.
     pub fn nth_part(&self, n: i32) -> Option<String> {
         MULTIPART_EXTENSION.captures(&self.filename).map(|captures| {
-            let mut replacement = String::from(captures.at(1).unwrap());
+            let mut replacement = String::from(captures.get(1).unwrap().as_str());
             // `n` padded with zeroes to the length of archive's number's length
-            replacement.push_str(&format!("{:01$}", n, captures.at(2).unwrap().len()));
-            replacement.push_str(captures.at(3).unwrap());
-            self.filename.replace(captures.at(0).unwrap(), &replacement)
+            replacement.push_str(&format!("{:01$}", n, captures.get(2).unwrap().as_str().len()));
+            replacement.push_str(captures.get(3).unwrap().as_str());
+            self.filename.replace(captures.get(0).unwrap().as_str(), &replacement)
         })
     }
 

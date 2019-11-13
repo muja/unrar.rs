@@ -9,7 +9,7 @@ repository = "https://github.com/muja/unrar.rs"
 
 [dependencies]
 libc = "0.2"
-regex = "0.1.8"
+regex = "1"
 lazy_static = "1"
 enum_primitive = "0.1"
 num = "0.1"
