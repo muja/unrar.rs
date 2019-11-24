@@ -4,18 +4,19 @@ extern crate unrar;
 use tempdir::TempDir;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::PathBuf;
 
 #[test]
 fn version_list() {
-    let mut entries = unrar::Archive::new("data/version.rar".into()).list().unwrap();
-    assert_eq!(entries.next().unwrap().unwrap().filename, "VERSION");
+    let mut entries = unrar::Archive::new("data/version.rar").list().unwrap();
+    assert_eq!(entries.next().unwrap().unwrap().filename, PathBuf::from("VERSION"));
 }
 
 #[test]
 fn version_cat() {
     let t = TempDir::new("unrar").unwrap();
-    unrar::Archive::new("data/version.rar".into())
-        .extract_to(t.path().to_str().unwrap().into())
+    unrar::Archive::new("data/version.rar")
+        .extract_to(t.path())
         .unwrap()
         .process()
         .unwrap();
