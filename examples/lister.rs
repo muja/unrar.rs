@@ -1,7 +1,5 @@
 extern crate unrar;
 
-extern crate env_logger;
-
 use unrar::Archive;
 use unrar::error::{Code, When, UnrarError};
 use std::io::Write;
@@ -10,7 +8,6 @@ fn main() {
     // Basic args parsing
     // Usage: cargo run --example lister path/to/archive.rar
 
-    env_logger::init().unwrap();
     let args = std::env::args();
     let mut stderr = std::io::stderr();
     let file = args.skip(1).next().unwrap_or_else(|| {

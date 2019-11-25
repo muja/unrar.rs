@@ -13,7 +13,6 @@ regex = "1"
 lazy_static = "1"
 enum_primitive = "0.1"
 num = "0.1"
-log = "0.3"
 bitflags = "1"
 
 [dependencies.unrar_sys]
@@ -21,5 +20,4 @@ path = "unrar_sys"
 version = "0.2"
 
 [dev-dependencies]
-env_logger = "0.3"
 tempdir = "0.3"
