@@ -1,6 +1,6 @@
 use native;
 use regex::Regex;
-use libc::c_int;
+use std::os::raw::c_int;
 use std::str;
 use std::fmt;
 use std::ffi::CStr;
