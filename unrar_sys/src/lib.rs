@@ -1,9 +1,20 @@
+#![no_std]
+
+#[cfg(feature = "std")]
+extern crate std;
+
 extern crate libc;
+
 #[cfg(all(windows, target_env = "msvc"))]
 extern crate winapi;
 
-use libc::{c_int, c_uint, wchar_t, c_uchar};
-use std::os::raw::c_char;
+#[cfg(feature = "std")]
+use std::os::raw::{c_int, c_uint, c_uchar, c_char};
+#[cfg(feature = "std")]
+use libc::wchar_t;
+
+#[cfg(not(feature = "std"))]
+use libc::{c_int, c_uint, wchar_t, c_uchar, c_char};
 
 // ----------------- ENV SPECIFIC ----------------- //
 
@@ -18,6 +29,11 @@ mod env {
 #[cfg(not(all(windows, target_env = "msvc")))]
 mod env {
     use super::*;
+
+    #[cfg(feature = "std")]
+    use std::os::raw::c_long;
+
+    #[cfg(not(feature = "std"))]
     use libc::c_long;
 
     pub type LPARAM = c_long;
