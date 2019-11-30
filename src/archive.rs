@@ -203,12 +203,28 @@ impl<'a> Archive<'a> {
     }
 }
 
+bitflags! {
+    #[derive(Default)]
+    pub struct ArchiveFlags: u32 {
+        const VOLUME = native::ROADF_VOLUME;
+        const COMMENT = native::ROADF_COMMENT;
+        const LOCK = native::ROADF_LOCK;
+        const SOLID = native::ROADF_SOLID;
+        const NEW_NUMBERING = native::ROADF_NEWNUMBERING;
+        const SIGNED = native::ROADF_SIGNED;
+        const RECOVERY = native::ROADF_RECOVERY;
+        const ENC_HEADERS = native::ROADF_ENCHEADERS;
+        const FIRST_VOLUME = native::ROADF_FIRSTVOLUME;
+    }
+}
+
 #[derive(Debug)]
 pub struct OpenArchive {
     handle: NonNull<native::HANDLE>,
     operation: Operation,
     destination: Option<WideCString>,
     damaged: bool,
+    flags: ArchiveFlags,
 }
 
 impl OpenArchive {
@@ -242,6 +258,7 @@ impl OpenArchive {
                 handle: handle,
                 destination: destination,
                 damaged: false,
+                flags: ArchiveFlags::from_bits(data.flags).unwrap(),
                 operation: operation,
             };
 
@@ -252,6 +269,37 @@ impl OpenArchive {
         } else {
             Err(UnrarError::from(result, When::Open))
         }
+    }
+
+    pub fn is_locked(&self) -> bool {
+        self.flags.contains(ArchiveFlags::LOCK)
+    }
+
+    pub fn has_encrypted_headers(&self) -> bool {
+        self.flags.contains(ArchiveFlags::ENC_HEADERS)
+    }
+
+    pub fn has_recovery_record(&self) -> bool {
+        self.flags.contains(ArchiveFlags::RECOVERY)
+    }
+
+    pub fn has_comment(&self) -> bool {
+        self.flags.contains(ArchiveFlags::COMMENT)
+    }
+
+    /// Solid archive, all files in a single compressed block.
+    pub fn is_solid(&self) -> bool {
+        self.flags.contains(ArchiveFlags::SOLID)
+    }
+
+    /// Archive is part of a multivolume set, but not the first volume.
+    pub fn is_volume(&self) -> bool {
+        self.flags.contains(ArchiveFlags::VOLUME)
+    }
+
+    /// Archive is the first volume of a multivolume set.
+    pub fn is_first_volume(&self) -> bool {
+        self.flags.contains(ArchiveFlags::FIRST_VOLUME)
     }
 
     pub fn process(&mut self) -> UnrarResult<Vec<Entry>> {
