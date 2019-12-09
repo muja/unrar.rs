@@ -13,3 +13,6 @@ libc = "0.2"
 
 [build-dependencies]
 cc = "1"
+
+[target.'cfg(windows)'.dependencies]
+winapi = "0.3"

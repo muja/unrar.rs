@@ -1,6 +1,6 @@
 use native;
 use regex::Regex;
-use libc::{c_uint, c_long, c_int};
+use libc::c_int;
 use std::str;
 use std::fmt;
 use std::ffi::CStr;
@@ -233,7 +233,8 @@ impl OpenArchive {
         }
     }
 
-    extern "C" fn callback(msg: c_uint, user_data: c_long, p1: c_long, p2: c_long) -> c_int {
+    extern "C" fn callback(msg: native::UINT, user_data: native::LPARAM,
+                           p1: native::LPARAM, p2: native::LPARAM) -> c_int {
         // println!("msg: {}, user_data: {}, p1: {}, p2: {}", msg, user_data, p1, p2);
         match msg {
             native::UCM_CHANGEVOLUME => {
@@ -263,7 +264,7 @@ impl Iterator for OpenArchive {
         }
         let mut volume = None;
         unsafe {
-            native::RARSetCallback(self.handle, Self::callback, &mut volume as *mut _ as c_long)
+            native::RARSetCallback(self.handle, Self::callback, &mut volume as *mut _ as native::LPARAM)
         }
         let mut header = native::HeaderData::default();
         let read_result =
