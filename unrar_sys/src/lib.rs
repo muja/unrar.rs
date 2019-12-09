@@ -49,6 +49,20 @@ pub const UCM_NEEDPASSWORD: c_uint = 2;
 pub const UCM_CHANGEVOLUMEW: c_uint = 3;
 pub const UCM_NEEDPASSWORDW: c_uint = 4;
 
+// RAROpenArchiveDataEx::Flags
+pub const ROADF_VOLUME: c_uint = 0x0001;
+pub const ROADF_COMMENT: c_uint = 0x0002;
+pub const ROADF_LOCK: c_uint = 0x0004;
+pub const ROADF_SOLID: c_uint = 0x0008;
+pub const ROADF_NEWNUMBERING: c_uint = 0x0010;
+pub const ROADF_SIGNED: c_uint = 0x0020;
+pub const ROADF_RECOVERY: c_uint = 0x0040;
+pub const ROADF_ENCHEADERS: c_uint = 0x0080;
+pub const ROADF_FIRSTVOLUME: c_uint = 0x0100;
+
+// RAROpenArchiveDataEx::OpFlags
+pub const ROADOF_KEEPBROKEN: c_uint = 0x0001;
+
 pub type ChangeVolProc = extern "C" fn(*mut c_char, c_int) -> c_int;
 pub type ProcessDataProc = extern "C" fn(*mut c_uchar, c_int) -> c_int;
 pub type Callback = extern "C" fn(c_uint, c_long, c_long, c_long) -> c_int;
@@ -100,7 +114,17 @@ pub struct HeaderDataEx {
     pub dict_size: c_uint,
     pub hash_type: c_uint,
     pub hash: [c_char; 32],
-    pub reserved: [c_uint; 1014],
+    pub redir_type: c_uint,
+    pub redir_name: *mut wchar_t,
+    pub redir_name_size: c_uint,
+    pub dir_target: c_uint,
+    pub mtime_low: c_uint,
+    pub mtime_high: c_uint,
+    pub ctime_low: c_uint,
+    pub ctime_high: c_uint,
+    pub atime_low: c_uint,
+    pub atime_high: c_uint,
+    pub reserved: [c_uint; 988],
 }
 
 #[repr(C)]
@@ -127,7 +151,9 @@ pub struct OpenArchiveDataEx {
     pub flags: c_uint,
     pub callback: Option<Callback>,
     pub user_data: c_long,
-    pub reserved: [c_uint; 28],
+    pub op_flags: c_uint,
+    pub comment_buffer_w: *mut wchar_t,
+    pub reserved: [c_uint; 25],
 }
 
 // ----------------- BINDINGS ----------------- //
@@ -216,7 +242,17 @@ impl Default for HeaderDataEx {
             dict_size: 0,
             hash_type: 0,
             hash: [0; 32],
-            reserved: [0; 1014],
+            redir_type: 0,
+            redir_name: 0 as *mut _,
+            redir_name_size: 0,
+            dir_target: 0,
+            mtime_low: 0,
+            mtime_high: 0,
+            ctime_low: 0,
+            ctime_high: 0,
+            atime_low: 0,
+            atime_high: 0,
+            reserved: [0; 988],
         }
     }
 }
@@ -258,7 +294,9 @@ impl Default for OpenArchiveDataEx {
             flags: 0,
             callback: None,
             user_data: 0,
-            reserved: [0; 28],
+            op_flags: 0,
+            comment_buffer_w: 0 as *mut _,
+            reserved: [0; 25],
         }
     }
 }
