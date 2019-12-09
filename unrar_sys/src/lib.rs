@@ -67,7 +67,9 @@ pub type ChangeVolProc = extern "C" fn(*mut c_char, c_int) -> c_int;
 pub type ProcessDataProc = extern "C" fn(*mut c_uchar, c_int) -> c_int;
 pub type Callback = extern "C" fn(c_uint, c_long, c_long, c_long) -> c_int;
 
-pub type Handle = *const c_void;
+#[repr(C)]
+pub struct HANDLE { _private: [u8; 0] }
+pub type Handle = *const HANDLE;
 
 // ----------------- STRUCTS ----------------- //
 
