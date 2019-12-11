@@ -9,7 +9,7 @@ description = "FFI bindings to unrar (with minimal abstractions)"
 repository = "https://github.com/muja/unrar.rs"
 
 [features]
-default = []
+default = ["std"]
 std = ["libc/std", "winapi/std"]
 
 [dependencies]
