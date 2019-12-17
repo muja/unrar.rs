@@ -8,8 +8,15 @@ license = "MIT"
 description = "FFI bindings to unrar (with minimal abstractions)"
 repository = "https://github.com/muja/unrar.rs"
 
+[features]
+default = ["std"]
+std = ["libc/std", "winapi/std"]
+
 [dependencies]
-libc = "0.2"
+libc = { version = "0.2", default-features = false }
 
 [build-dependencies]
 cc = "1"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["minwindef", "ntdef"] }

@@ -1,6 +1,51 @@
+#![no_std]
+
+#[cfg(feature = "std")]
+extern crate std;
+
 extern crate libc;
 
-use libc::{c_int, c_uint, wchar_t, c_long, c_char, c_void, c_uchar};
+#[cfg(all(windows, target_env = "msvc"))]
+extern crate winapi;
+
+#[cfg(feature = "std")]
+use std::os::raw::{c_int, c_uint, c_uchar, c_char};
+#[cfg(feature = "std")]
+use libc::wchar_t;
+
+#[cfg(not(feature = "std"))]
+use libc::{c_int, c_uint, wchar_t, c_uchar, c_char};
+
+// ----------------- ENV SPECIFIC ----------------- //
+
+#[cfg(all(windows, target_env = "msvc"))]
+mod env {
+    pub use {
+        winapi::shared::minwindef::{LPARAM, UINT},
+        winapi::shared::ntdef::LONG,
+    };
+}
+
+#[cfg(not(all(windows, target_env = "msvc")))]
+mod env {
+    use super::*;
+
+    #[cfg(feature = "std")]
+    use std::os::raw::c_long;
+
+    #[cfg(not(feature = "std"))]
+    use libc::c_long;
+
+    pub type LPARAM = c_long;
+    pub type LONG = c_long;
+    pub type UINT = c_uint;
+}
+
+pub use self::env::LPARAM;
+pub use self::env::LONG;
+pub use self::env::UINT;
+
+pub type WCHAR = wchar_t;
 
 // ----------------- CONSTANTS ----------------- //
 
@@ -29,8 +74,8 @@ pub const RAR_SKIP: c_int = 0;
 pub const RAR_TEST: c_int = 1;
 pub const RAR_EXTRACT: c_int = 2;
 
-pub const RAR_VOL_ASK: c_long = 0;
-pub const RAR_VOL_NOTIFY: c_long = 1;
+pub const RAR_VOL_ASK: LPARAM = 0;
+pub const RAR_VOL_NOTIFY: LPARAM = 1;
 
 pub const RAR_HASH_NONE: c_uint = 0;
 pub const RAR_HASH_CRC32: c_uint = 1;
@@ -43,11 +88,11 @@ pub const RHDF_ENCRYPTED: c_uint = 1 << 2; // 4, 0x4
 pub const RHDF_SOLID: c_uint = 1 << 4; // 16, 0x10
 pub const RHDF_DIRECTORY: c_uint = 1 << 5; // 32, 0x20
 
-pub const UCM_CHANGEVOLUME: c_uint = 0;
-pub const UCM_PROCESSDATA: c_uint = 1;
-pub const UCM_NEEDPASSWORD: c_uint = 2;
-pub const UCM_CHANGEVOLUMEW: c_uint = 3;
-pub const UCM_NEEDPASSWORDW: c_uint = 4;
+pub const UCM_CHANGEVOLUME: UINT = 0;
+pub const UCM_PROCESSDATA: UINT = 1;
+pub const UCM_NEEDPASSWORD: UINT = 2;
+pub const UCM_CHANGEVOLUMEW: UINT = 3;
+pub const UCM_NEEDPASSWORDW: UINT = 4;
 
 // RAROpenArchiveDataEx::Flags
 pub const ROADF_VOLUME: c_uint = 0x0001;
@@ -65,9 +110,11 @@ pub const ROADOF_KEEPBROKEN: c_uint = 0x0001;
 
 pub type ChangeVolProc = extern "C" fn(*mut c_char, c_int) -> c_int;
 pub type ProcessDataProc = extern "C" fn(*mut c_uchar, c_int) -> c_int;
-pub type Callback = extern "C" fn(c_uint, c_long, c_long, c_long) -> c_int;
+pub type Callback = extern "C" fn(UINT, LPARAM, LPARAM, LPARAM) -> c_int;
 
-pub type Handle = *const c_void;
+#[repr(C)]
+pub struct HANDLE { _private: [u8; 0] }
+pub type Handle = *const HANDLE;
 
 // ----------------- STRUCTS ----------------- //
 
@@ -150,7 +197,7 @@ pub struct OpenArchiveDataEx {
     pub comment_state: c_uint,
     pub flags: c_uint,
     pub callback: Option<Callback>,
-    pub user_data: c_long,
+    pub user_data: LPARAM,
     pub op_flags: c_uint,
     pub comment_buffer_w: *mut wchar_t,
     pub reserved: [c_uint; 25],
@@ -182,7 +229,7 @@ extern "C" {
                            dest_name: *const wchar_t)
                            -> c_int;
 
-    pub fn RARSetCallback(handle: Handle, callback: Callback, user_data: c_long);
+    pub fn RARSetCallback(handle: Handle, callback: Callback, user_data: LPARAM);
 
     pub fn RARSetChangeVolProc(handle: Handle, change_vol_proc: ChangeVolProc);
 

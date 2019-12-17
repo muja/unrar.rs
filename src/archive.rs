@@ -1,10 +1,11 @@
 use native;
 use regex::Regex;
-use libc::{c_uint, c_long, c_int};
+use std::os::raw::c_int;
 use std::str;
 use std::fmt;
 use std::ffi::CStr;
 use std::iter::repeat;
+use std::ptr::NonNull;
 use error::*;
 
 macro_rules! cstr {
@@ -184,7 +185,7 @@ impl<'a> Archive<'a> {
 
 #[derive(Debug)]
 pub struct OpenArchive {
-    handle: native::Handle,
+    handle: NonNull<native::HANDLE>,
     operation: Operation,
     destination: Option<String>,
     damaged: bool,
@@ -199,13 +200,13 @@ impl OpenArchive {
            -> UnrarResult<Self> {
         let mut data = native::OpenArchiveData::new(cstr!(filename).as_ptr() as *const _,
                                                     mode as u32);
-        let handle = unsafe { native::RAROpenArchive(&mut data as *mut _) };
+        let handle = NonNull::new(unsafe { native::RAROpenArchive(&mut data as *mut _) }
+                                  as *mut _);
         let result = Code::from(data.open_result).unwrap();
-        if handle.is_null() {
-            Err(UnrarError::from(result, When::Open))
-        } else {
+
+        if let Some(handle) = handle {
             if let Some(pw) = password {
-                unsafe { native::RARSetPassword(handle, cstr!(pw).as_ptr() as *const _) }
+                unsafe { native::RARSetPassword(handle.as_ptr(), cstr!(pw).as_ptr() as *const _) }
             }
             let dest = destination.map(|path| cstr!(path));
             let archive = OpenArchive {
@@ -214,10 +215,13 @@ impl OpenArchive {
                 damaged: false,
                 operation: operation,
             };
+
             match result {
                 Code::Success => Ok(archive),
                 _ => Err(UnrarError::new(result, When::Open, archive)),
             }
+        } else {
+            Err(UnrarError::from(result, When::Open))
         }
     }
 
@@ -233,7 +237,8 @@ impl OpenArchive {
         }
     }
 
-    extern "C" fn callback(msg: c_uint, user_data: c_long, p1: c_long, p2: c_long) -> c_int {
+    extern "C" fn callback(msg: native::UINT, user_data: native::LPARAM,
+                           p1: native::LPARAM, p2: native::LPARAM) -> c_int {
         // println!("msg: {}, user_data: {}, p1: {}, p2: {}", msg, user_data, p1, p2);
         match msg {
             native::UCM_CHANGEVOLUME => {
@@ -263,17 +268,17 @@ impl Iterator for OpenArchive {
         }
         let mut volume = None;
         unsafe {
-            native::RARSetCallback(self.handle, Self::callback, &mut volume as *mut _ as c_long)
+            native::RARSetCallback(self.handle.as_ptr(), Self::callback, &mut volume as *mut _ as native::LPARAM)
         }
         let mut header = native::HeaderData::default();
         let read_result =
-            Code::from(unsafe { native::RARReadHeader(self.handle, &mut header as *mut _) as u32 })
+            Code::from(unsafe { native::RARReadHeader(self.handle.as_ptr(), &mut header as *mut _) as u32 })
                 .unwrap();
         match read_result {
             Code::Success => {
                 let process_result = Code::from(unsafe {
                                          native::RARProcessFile(
-                        self.handle,
+                        self.handle.as_ptr(),
                         self.operation as i32,
                         self.destination.as_ref().map(
                             |x| x.as_ptr() as *const _
@@ -312,7 +317,7 @@ impl Iterator for OpenArchive {
 impl Drop for OpenArchive {
     fn drop(&mut self) {
         unsafe {
-            native::RARCloseArchive(self.handle);
+            native::RARCloseArchive(self.handle.as_ptr());
         }
     }
 }
