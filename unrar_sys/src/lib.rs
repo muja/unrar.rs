@@ -327,12 +327,12 @@ impl OpenArchiveData {
     }
 }
 
-impl Default for OpenArchiveDataEx {
-    fn default() -> Self {
+impl OpenArchiveDataEx {
+    pub fn new(archive: *const wchar_t, mode: c_uint) -> Self {
         OpenArchiveDataEx {
             archive_name: 0 as *const _,
-            archive_name_w: 0 as *const _,
-            open_mode: 0,
+            archive_name_w: archive,
+            open_mode: mode,
             open_result: 0,
             comment_buffer: 0 as *mut _,
             comment_buffer_size: 0,
