@@ -208,7 +208,7 @@ impl OpenArchive {
         if let Some(handle) = handle {
             if let Some(pw) = password {
                 let pw = cstr!(pw);
-                unsafe { native::RARSetPassword(handle, pw.as_ptr() as *const _) }
+                unsafe { native::RARSetPassword(handle.as_ptr(), pw.as_ptr() as *const _) }
             }
             let dest = destination.map(|path| cstr!(path));
             let archive = OpenArchive {
