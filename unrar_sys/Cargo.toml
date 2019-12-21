@@ -1,6 +1,6 @@
 [package]
 name = "unrar_sys"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Danyel Bayraktar <rust@danyel.io>"]
 
 build = "build.rs"
