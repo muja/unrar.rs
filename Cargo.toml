@@ -1,7 +1,7 @@
 [package]
 name = "unrar"
 version = "0.4.3"
-authors = ["Danyel Bayraktar <cydrop@gmail.com>"]
+authors = ["Danyel Bayraktar <rust@danyel.io>"]
 
 license = "MIT"
 description = "list and extract RAR archives"
