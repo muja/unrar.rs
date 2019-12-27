@@ -189,10 +189,7 @@ impl<'a> Archive<'a> {
                 path: Option<T>,
                 operation: Operation)
                 -> UnrarResult<OpenArchive> {
-        // Panics if password contains nul values.
-        let password = self.password.map(|x| CString::new(x).unwrap());
-
-        OpenArchive::new(&self.filename, mode, password, path.as_ref().map(|x| x.as_ref()), operation)
+        OpenArchive::new(&self.filename, mode, self.password, path.as_ref().map(|x| x.as_ref()), operation)
     }
 }
 
@@ -207,13 +204,21 @@ pub struct OpenArchive {
 impl OpenArchive {
     fn new(filename: &Path,
            mode: OpenMode,
-           password: Option<CString>,
+           password: Option<&str>,
            destination: Option<&Path>,
            operation: Operation)
            -> UnrarResult<Self>
     {
-        // Panics if filename contains nul values.
-        let filename = WideCString::from_os_str(&filename).unwrap();
+        let password = match password {
+            Some(pw) => Some(CString::new(pw)?),
+            None => None,
+        };
+        let destination = match destination {
+            Some(dest) => Some(WideCString::from_os_str(&dest)?),
+            None => None,
+        };
+        let filename = WideCString::from_os_str(&filename)?;
+
         let mut data = native::OpenArchiveDataEx::new(filename.as_ptr() as *const _,
                                                       mode as u32);
         let handle = NonNull::new(unsafe { native::RAROpenArchiveEx(&mut data as *mut _) }
@@ -227,8 +232,7 @@ impl OpenArchive {
 
             let archive = OpenArchive {
                 handle: handle,
-                // Panics if destination contains nul values.
-                destination: destination.map(|p| WideCString::from_os_str(&p).unwrap()),
+                destination: destination,
                 damaged: false,
                 operation: operation,
             };
@@ -487,5 +491,22 @@ mod tests {
         assert_eq!(super::is_archive(&PathBuf::from("archive.part1rar")), false);
         assert_eq!(super::is_archive(&PathBuf::from("archive.rar\n")), false);
         assert_eq!(super::is_archive(&PathBuf::from("archive.zip")), false);
+    }
+
+    #[test]
+    fn nul_in_input() {
+        use crate::error::{Code, When};
+
+        let err = Archive::new("\0archive.rar").list().unwrap_err();
+        assert_eq!(err.code, Code::Unknown);
+        assert_eq!(err.when, When::Open);
+
+        let err = Archive::with_password("archive.rar", "un\0rar").list().unwrap_err();
+        assert_eq!(err.code, Code::Unknown);
+        assert_eq!(err.when, When::Open);
+
+        let err = Archive::new("archive.rar").extract_to("tmp/\0").unwrap_err();
+        assert_eq!(err.code, Code::Unknown);
+        assert_eq!(err.when, When::Open);
     }
 }
