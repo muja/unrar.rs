@@ -7,6 +7,7 @@ extern crate lazy_static;
 extern crate enum_primitive;
 #[macro_use]
 extern crate bitflags;
+extern crate widestring;
 
 pub use archive::Archive;
 pub mod error;
