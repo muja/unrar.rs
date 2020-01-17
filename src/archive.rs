@@ -35,7 +35,7 @@ lazy_static! {
 
 pub struct Archive<'a> {
     filename: Cow<'a, Path>,
-    password: Option<&'a str>,
+    password: Option<CString>,
     comments: Option<&'a mut Vec<u8>>,
 }
 
@@ -43,28 +43,30 @@ pub type Glob = PathBuf;
 
 impl<'a> Archive<'a> {
     /// Creates an `Archive` object to operate on a plain RAR archive.
-    pub fn new<T>(file: &'a T) -> Self
+    pub fn new<T>(file: &'a T) -> Result<Self, NulError>
     where
         T: AsRef<Path> + ?Sized,
     {
-        Archive {
+        let _ = WideCString::from_os_str(file.as_ref())?;
+        Ok(Archive {
             filename: Cow::Borrowed(file.as_ref()),
             password: None,
             comments: None,
-        }
+        })
     }
 
     /// Creates an `Archive` object to operate on a password encrypted RAR archive.
-    pub fn with_password<T, U>(file: &'a T, password: &'a U) -> Self
+    pub fn with_password<T, U>(file: &'a T, password: &'a U) -> Result<Self, NulError>
     where
         T: AsRef<Path> + ?Sized,
         U: AsRef<str> + ?Sized,
     {
-        Archive {
+        let _ = WideCString::from_os_str(file.as_ref())?;
+        Ok(Archive {
             filename: Cow::Borrowed(file.as_ref()),
-            password: Some(password.as_ref()),
+            password: Some(CString::new(password.as_ref())?),
             comments: None,
-        }
+        })
     }
 
     /// Set the comment buffer of the underlying archive.
@@ -174,6 +176,10 @@ impl<'a> Archive<'a> {
     }
 
     /// Opens the underlying archive for extracting to the given directory.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `path` contains nul values.
     pub fn extract_to<T: AsRef<Path>>(self, path: T) -> UnrarResult<OpenArchive> {
         self.open(OpenMode::Extract, Some(path), Operation::Extract)
     }
@@ -184,6 +190,10 @@ impl<'a> Archive<'a> {
     }
 
     /// Opens the underlying archive with the provided parameters.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `path` contains nul values.
     pub fn open<T: AsRef<Path>>(self,
                 mode: OpenMode,
                 path: Option<T>,
@@ -204,20 +214,18 @@ pub struct OpenArchive {
 impl OpenArchive {
     fn new(filename: &Path,
            mode: OpenMode,
-           password: Option<&str>,
+           password: Option<CString>,
            destination: Option<&Path>,
            operation: Operation)
            -> UnrarResult<Self>
     {
-        let password = match password {
-            Some(pw) => Some(CString::new(pw)?),
-            None => None,
-        };
         let destination = match destination {
-            Some(dest) => Some(WideCString::from_os_str(&dest)?),
+            Some(dest) => Some(WideCString::from_os_str(&dest).expect("Unexpected nul in destination")),
             None => None,
         };
-        let filename = WideCString::from_os_str(&filename)?;
+        // Panic here is our fault. Either something in Archive has added a nul to filename,
+        // or filename was not checked for nuls on Archive creation.
+        let filename = WideCString::from_os_str(&filename).expect("Unexpected nul in filename");
 
         let mut data = native::OpenArchiveDataEx::new(filename.as_ptr() as *const _,
                                                       mode as u32);
@@ -450,36 +458,36 @@ mod tests {
 
     #[test]
     fn glob() {
-        assert_eq!(Archive::new("arc.part0010.rar").all_parts(),
+        assert_eq!(Archive::new("arc.part0010.rar").unwrap().all_parts(),
                    PathBuf::from("arc.part????.rar"));
-        assert_eq!(Archive::new("archive.r100").all_parts(),
+        assert_eq!(Archive::new("archive.r100").unwrap().all_parts(),
                    PathBuf::from("archive.r???"));
-        assert_eq!(Archive::new("archive.r9").all_parts(), PathBuf::from("archive.r?"));
-        assert_eq!(Archive::new("archive.999").all_parts(),
+        assert_eq!(Archive::new("archive.r9").unwrap().all_parts(), PathBuf::from("archive.r?"));
+        assert_eq!(Archive::new("archive.999").unwrap().all_parts(),
                    PathBuf::from("archive.???"));
-        assert_eq!(Archive::new("archive.rar").all_parts(),
+        assert_eq!(Archive::new("archive.rar").unwrap().all_parts(),
                    PathBuf::from("archive.rar"));
-        assert_eq!(Archive::new("random_string").all_parts(),
+        assert_eq!(Archive::new("random_string").unwrap().all_parts(),
                    PathBuf::from("random_string"));
-        assert_eq!(Archive::new("v8/v8.rar").all_parts(), PathBuf::from("v8/v8.rar"));
-        assert_eq!(Archive::new("v8/v8").all_parts(), PathBuf::from("v8/v8"));
+        assert_eq!(Archive::new("v8/v8.rar").unwrap().all_parts(), PathBuf::from("v8/v8.rar"));
+        assert_eq!(Archive::new("v8/v8").unwrap().all_parts(), PathBuf::from("v8/v8"));
     }
 
     #[test]
     fn first_part() {
-        assert_eq!(Archive::new("arc.part0010.rar").first_part(),
+        assert_eq!(Archive::new("arc.part0010.rar").unwrap().first_part(),
                    PathBuf::from("arc.part0001.rar"));
-        assert_eq!(Archive::new("archive.r100").first_part(),
+        assert_eq!(Archive::new("archive.r100").unwrap().first_part(),
                    PathBuf::from("archive.r001"));
-        assert_eq!(Archive::new("archive.r9").first_part(), PathBuf::from("archive.r1"));
-        assert_eq!(Archive::new("archive.999").first_part(),
+        assert_eq!(Archive::new("archive.r9").unwrap().first_part(), PathBuf::from("archive.r1"));
+        assert_eq!(Archive::new("archive.999").unwrap().first_part(),
                    PathBuf::from("archive.001"));
-        assert_eq!(Archive::new("archive.rar").first_part(),
+        assert_eq!(Archive::new("archive.rar").unwrap().first_part(),
                    PathBuf::from("archive.rar"));
-        assert_eq!(Archive::new("random_string").first_part(),
+        assert_eq!(Archive::new("random_string").unwrap().first_part(),
                    PathBuf::from("random_string"));
-        assert_eq!(Archive::new("v8/v8.rar").first_part(), PathBuf::from("v8/v8.rar"));
-        assert_eq!(Archive::new("v8/v8").first_part(), PathBuf::from("v8/v8"));
+        assert_eq!(Archive::new("v8/v8.rar").unwrap().first_part(), PathBuf::from("v8/v8.rar"));
+        assert_eq!(Archive::new("v8/v8").unwrap().first_part(), PathBuf::from("v8/v8"));
     }
 
     #[test]
@@ -495,18 +503,13 @@ mod tests {
 
     #[test]
     fn nul_in_input() {
-        use crate::error::{Code, When};
+        assert!(Archive::new("\0archive.rar").is_err());
+        assert!(Archive::with_password("archive.rar", "un\0rar").is_err());
+    }
 
-        let err = Archive::new("\0archive.rar").list().unwrap_err();
-        assert_eq!(err.code, Code::Unknown);
-        assert_eq!(err.when, When::Open);
-
-        let err = Archive::with_password("archive.rar", "un\0rar").list().unwrap_err();
-        assert_eq!(err.code, Code::Unknown);
-        assert_eq!(err.when, When::Open);
-
-        let err = Archive::new("archive.rar").extract_to("tmp/\0").unwrap_err();
-        assert_eq!(err.code, Code::Unknown);
-        assert_eq!(err.when, When::Open);
+    #[test]
+    #[should_panic(expected = "Unexpected nul in destination")]
+    fn nul_in_destination() {
+        let _ = Archive::new("archive.rar").unwrap().extract_to("tmp/\0");
     }
 }

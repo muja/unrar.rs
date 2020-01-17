@@ -11,14 +11,14 @@ use std::path::PathBuf;
 #[test]
 fn list() {
     // No password needed in order to list contents
-    let mut entries = Archive::new("data/crypted.rar").list().unwrap();
+    let mut entries = Archive::new("data/crypted.rar").unwrap().list().unwrap();
     assert_eq!(entries.next().unwrap().unwrap().filename, PathBuf::from(".gitignore"));
 }
 
 #[test]
 fn no_password() {
     let t = TempDir::new("unrar").unwrap();
-    let mut arc = Archive::new("data/crypted.rar")
+    let mut arc = Archive::new("data/crypted.rar").unwrap()
         .extract_to(t.path())
         .unwrap();
     let err = arc.next().unwrap().unwrap_err();
@@ -29,7 +29,7 @@ fn no_password() {
 #[test]
 fn version_cat() {
     let t = TempDir::new("unrar").unwrap();
-    Archive::with_password("data/crypted.rar", "unrar")
+    Archive::with_password("data/crypted.rar", "unrar").unwrap()
         .extract_to(t.path())
         .unwrap()
         .process()

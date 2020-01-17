@@ -2,6 +2,8 @@ use native;
 use std::result::Result;
 use num::FromPrimitive;
 use std::fmt;
+use std::error;
+use std::ffi;
 
 enum_from_primitive! {
     #[derive(PartialEq, Eq, Debug, Clone, Copy)]
@@ -108,14 +110,29 @@ impl<T> UnrarError<T> {
 
 pub type UnrarResult<T> = Result<T, UnrarError<T>>;
 
-impl<T, C: widestring::UChar> From<widestring::NulError<C>> for UnrarError<T> {
-    fn from(_: widestring::NulError<C>) -> UnrarError<T> {
-        UnrarError::from(Code::Unknown, When::Open)
+#[derive(Debug)]
+pub struct NulError(usize);
+
+impl fmt::Display for NulError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "nul value found at position: {}", self.0)
     }
 }
 
-impl<T> From<std::ffi::NulError> for UnrarError<T> {
-    fn from(_: std::ffi::NulError) -> UnrarError<T> {
-        UnrarError::from(Code::Unknown, When::Open)
+impl error::Error for NulError {
+    fn description(&self) -> &str {
+        "nul value found"
+    }
+}
+
+impl<C: widestring::UChar> From<widestring::NulError<C>> for NulError {
+    fn from(e: widestring::NulError<C>) -> NulError {
+        NulError(e.nul_position())
+    }
+}
+
+impl From<ffi::NulError> for NulError {
+    fn from(e: ffi::NulError) -> NulError {
+        NulError(e.nul_position())
     }
 }

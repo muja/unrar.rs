@@ -15,7 +15,7 @@ fn main() {
         std::process::exit(0)
     });
 
-    match Archive::new(&file).list_split() {
+    match Archive::new(&file).unwrap().list_split() {
         // Everything okay, just list the archive
         Ok(archive) => list_archive(archive),
 

@@ -12,7 +12,7 @@ fn list_missing_volume() {
                                       "src/lib.rs",
                                       "vendor/unrar/acknow.txt",
                                       "vendor/unrar/arccmt.cpp"].iter().map(|x| x.into()).collect();
-    let mut archive = Archive::new("data/archive.part1.rar").list().unwrap();
+    let mut archive = Archive::new("data/archive.part1.rar").unwrap().list().unwrap();
     for (i, e) in archive.by_ref().enumerate().take(expected.len()) {
         assert_eq!(e.unwrap().filename, expected[i]);
     }
