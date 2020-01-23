@@ -205,7 +205,7 @@ impl<'a> Archive<'a> {
 
 bitflags! {
     #[derive(Default)]
-    pub struct ArchiveFlags: u32 {
+    struct ArchiveFlags: u32 {
         const VOLUME = native::ROADF_VOLUME;
         const COMMENT = native::ROADF_COMMENT;
         const LOCK = native::ROADF_LOCK;
@@ -216,6 +216,13 @@ bitflags! {
         const ENC_HEADERS = native::ROADF_ENCHEADERS;
         const FIRST_VOLUME = native::ROADF_FIRSTVOLUME;
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VolumeInfo {
+    None,
+    First,
+    Subsequent,
 }
 
 #[derive(Debug)]
@@ -292,14 +299,16 @@ impl OpenArchive {
         self.flags.contains(ArchiveFlags::SOLID)
     }
 
-    /// Archive is part of a multivolume set, but not the first volume.
-    pub fn is_volume(&self) -> bool {
-        self.flags.contains(ArchiveFlags::VOLUME)
-    }
-
-    /// Archive is the first volume of a multivolume set.
-    pub fn is_first_volume(&self) -> bool {
-        self.flags.contains(ArchiveFlags::FIRST_VOLUME)
+    /// Indicates whether the archive file is split into multiple volumes or not,
+    /// and if so, whether the file is the first volume or not.
+    pub fn volume_info(&self) -> VolumeInfo {
+        if self.flags.contains(ArchiveFlags::FIRST_VOLUME) {
+            VolumeInfo::First
+        } else if self.flags.contains(ArchiveFlags::VOLUME) {
+            VolumeInfo::Subsequent
+        } else {
+            VolumeInfo::None
+        }
     }
 
     pub fn process(&mut self) -> UnrarResult<Vec<Entry>> {
