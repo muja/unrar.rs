@@ -411,7 +411,7 @@ impl Drop for OpenArchive {
 }
 
 fn unpack_unp_size(unp_size: c_uint, unp_size_high: c_uint) -> usize {
-    (unp_size_high << std::mem::size_of::<c_uint>() | unp_size) as usize
+    ((unp_size_high as usize) << (8*std::mem::size_of::<c_uint>())) | (unp_size as usize)
 }
 
 bitflags! {
@@ -568,5 +568,12 @@ mod tests {
     #[should_panic(expected = "Unexpected nul in destination")]
     fn nul_in_destination() {
         let _ = Archive::new("archive.rar").unwrap().extract_to("tmp/\0");
+    }
+
+    #[test]
+    fn combine_size() {
+	use super::unpack_unp_size;
+	let (high, low)=(1u32, 1464303715u32);
+	assert_eq!(unpack_unp_size(low, high), 5759271011);
     }
 }
