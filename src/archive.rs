@@ -407,8 +407,8 @@ impl Iterator for OpenArchive {
                         self.destination
                             .as_ref()
                             .map(|x| x.as_ptr() as *const _)
-                            .unwrap_or(0 as *const _),
-                        0 as *const _,
+                            .unwrap_or(std::ptr::null()),
+                        std::ptr::null(),
                     ) as u32
                 })
                 .unwrap();

@@ -53,7 +53,7 @@ fn main() {
         first = false;
         let s = str::from_utf8(unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes())
             .unwrap();
-        process_result = unsafe { RARProcessFile(handle, RAR_SKIP, 0 as *const _, 0 as *const _) };
+        process_result = unsafe { RARProcessFile(handle, RAR_SKIP, std::ptr::null(), std::ptr::null()) };
         println!("{}", s);
         match process_result {
             ERAR_SUCCESS => (),
