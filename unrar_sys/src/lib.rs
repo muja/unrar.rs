@@ -256,7 +256,7 @@ impl Default for HeaderData {
             unp_ver: 0,
             method: 0,
             file_attr: 0,
-            comment_buffer: 0 as *mut _,
+            comment_buffer: std::ptr::null_mut(),
             comment_buffer_size: 0,
             comment_size: 0,
             comment_state: 0,
@@ -282,7 +282,7 @@ impl Default for HeaderDataEx {
             unp_ver: 0,
             method: 0,
             file_attr: 0,
-            comment_buffer: 0 as *mut _,
+            comment_buffer: std::ptr::null_mut(),
             comment_buffer_size: 0,
             comment_size: 0,
             comment_state: 0,
@@ -290,7 +290,7 @@ impl Default for HeaderDataEx {
             hash_type: 0,
             hash: [0; 32],
             redir_type: 0,
-            redir_name: 0 as *mut _,
+            redir_name: std::ptr::null_mut(),
             redir_name_size: 0,
             dir_target: 0,
             mtime_low: 0,
@@ -306,7 +306,7 @@ impl Default for HeaderDataEx {
 
 impl OpenArchiveData {
     pub fn new(archive: *const c_char, mode: c_uint) -> Self {
-        Self::with_comment_buffer(archive, mode, 0 as *mut _, 0)
+        Self::with_comment_buffer(archive, mode, std::ptr::null_mut(), 0)
     }
 
     pub fn with_comment_buffer(archive_name: *const c_char,
@@ -330,11 +330,11 @@ impl OpenArchiveData {
 impl OpenArchiveDataEx {
     pub fn new(archive: *const wchar_t, mode: c_uint) -> Self {
         OpenArchiveDataEx {
-            archive_name: 0 as *const _,
+            archive_name: std::ptr::null(),
             archive_name_w: archive,
             open_mode: mode,
             open_result: 0,
-            comment_buffer: 0 as *mut _,
+            comment_buffer: std::ptr::null_mut(),
             comment_buffer_size: 0,
             comment_size: 0,
             comment_state: 0,
@@ -342,7 +342,7 @@ impl OpenArchiveDataEx {
             callback: None,
             user_data: 0,
             op_flags: 0,
-            comment_buffer_w: 0 as *mut _,
+            comment_buffer_w: std::ptr::null_mut(),
             reserved: [0; 25],
         }
     }
