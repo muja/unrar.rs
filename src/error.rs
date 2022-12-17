@@ -1,9 +1,9 @@
 use native;
-use std::result::Result;
 use num::FromPrimitive;
-use std::fmt;
 use std::error;
 use std::ffi;
+use std::fmt;
+use std::result::Result;
 
 enum_from_primitive! {
     #[derive(PartialEq, Eq, Debug, Clone, Copy)]

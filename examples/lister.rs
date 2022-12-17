@@ -1,8 +1,8 @@
 extern crate unrar;
 
-use unrar::Archive;
-use unrar::error::{Code, When, UnrarError};
 use std::io::Write;
+use unrar::error::{Code, UnrarError, When};
+use unrar::Archive;
 
 fn main() {
     // Basic args parsing
@@ -41,14 +41,20 @@ fn main() {
                 Ok(e) => println!("{}", e),
                 // EOpen @ process() means that next volume was not found / not readable.
                 // In this case, the partial entry is stored in the data field of that error.
-                Err(UnrarError { code: Code::EOpen, when: When::Process, data: Some(e) }) => {
+                Err(UnrarError {
+                    code: Code::EOpen,
+                    when: When::Process,
+                    data: Some(e),
+                }) => {
                     // print the partial entry
                     println!("{}", e);
                     // emit warning that an error occured.
-                    writeln!(&mut stderr,
-                             "Could not find volume: {:?}",
-                             e.next_volume.unwrap())
-                        .unwrap();
+                    writeln!(
+                        &mut stderr,
+                        "Could not find volume: {:?}",
+                        e.next_volume.unwrap()
+                    )
+                    .unwrap();
                     // The iterator will stop by itself, no further action needed.
                 }
                 Err(err) => writeln!(&mut stderr, "Error: {}", err).unwrap(),

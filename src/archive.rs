@@ -1,15 +1,15 @@
-use native;
-use widestring::WideCString;
-use regex::Regex;
-use std::os::raw::{c_int, c_uint};
-use std::str;
-use std::fmt;
-use std::borrow::Cow;
-use std::path::{Path, PathBuf};
-use std::ffi::CString;
-use std::iter::repeat;
-use std::ptr::NonNull;
 use error::*;
+use native;
+use regex::Regex;
+use std::borrow::Cow;
+use std::ffi::CString;
+use std::fmt;
+use std::iter::repeat;
+use std::os::raw::{c_int, c_uint};
+use std::path::{Path, PathBuf};
+use std::ptr::NonNull;
+use std::str;
+use widestring::WideCString;
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,7 +27,11 @@ pub enum Operation {
     Extract = native::RAR_EXTRACT,
 }
 
-macro_rules! mp_ext { () => (r"(\.part|\.r?)(\d+)((?:\.rar)?)$") }
+macro_rules! mp_ext {
+    () => {
+        r"(\.part|\.r?)(\d+)((?:\.rar)?)$"
+    };
+}
 lazy_static! {
     static ref MULTIPART_EXTENSION: Regex = Regex::new(mp_ext!()).unwrap();
     static ref EXTENSION: Regex = Regex::new(concat!(mp_ext!(), r"|\.rar$")).unwrap();
@@ -94,18 +98,24 @@ impl<'a> Archive<'a> {
     ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn all_parts_option(&self) -> Option<Glob> {
-        get_rar_extension(&self.filename).and_then(|full_ext| {
-            MULTIPART_EXTENSION.captures(&full_ext).map(|captures| {
-                let mut replacement = String::from(captures.get(1).unwrap().as_str());
-                replacement.push_str(&repeat("?")
-                                     .take(captures.get(2).unwrap().as_str().len())
-                                     .collect::<String>());
-                replacement.push_str(captures.get(3).unwrap().as_str());
-                full_ext.replace(captures.get(0).unwrap().as_str(), &replacement)
+        get_rar_extension(&self.filename)
+            .and_then(|full_ext| {
+                MULTIPART_EXTENSION.captures(&full_ext).map(|captures| {
+                    let mut replacement = String::from(captures.get(1).unwrap().as_str());
+                    replacement.push_str(
+                        &repeat("?")
+                            .take(captures.get(2).unwrap().as_str().len())
+                            .collect::<String>(),
+                    );
+                    replacement.push_str(captures.get(3).unwrap().as_str());
+                    full_ext.replace(captures.get(0).unwrap().as_str(), &replacement)
+                })
             })
-        }).and_then(|new_ext| {
-            self.filename.file_stem().map(|x| Path::new(x).with_extension(&new_ext[1..]))
-        })
+            .and_then(|new_ext| {
+                self.filename
+                    .file_stem()
+                    .map(|x| Path::new(x).with_extension(&new_ext[1..]))
+            })
     }
 
     /// Returns a glob string covering all parts of the multipart collection or
@@ -124,17 +134,25 @@ impl<'a> Archive<'a> {
     ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn nth_part(&self, n: i32) -> Option<PathBuf> {
-        get_rar_extension(&self.filename).and_then(|full_ext| {
-            MULTIPART_EXTENSION.captures(&full_ext).map(|captures| {
-                let mut replacement = String::from(captures.get(1).unwrap().as_str());
-                // `n` padded with zeroes to the length of archive's number's length
-                replacement.push_str(&format!("{:01$}", n, captures.get(2).unwrap().as_str().len()));
-                replacement.push_str(captures.get(3).unwrap().as_str());
-                full_ext.replace(captures.get(0).unwrap().as_str(), &replacement)
+        get_rar_extension(&self.filename)
+            .and_then(|full_ext| {
+                MULTIPART_EXTENSION.captures(&full_ext).map(|captures| {
+                    let mut replacement = String::from(captures.get(1).unwrap().as_str());
+                    // `n` padded with zeroes to the length of archive's number's length
+                    replacement.push_str(&format!(
+                        "{:01$}",
+                        n,
+                        captures.get(2).unwrap().as_str().len()
+                    ));
+                    replacement.push_str(captures.get(3).unwrap().as_str());
+                    full_ext.replace(captures.get(0).unwrap().as_str(), &replacement)
+                })
             })
-        }).and_then(|new_ext| {
-            self.filename.file_stem().map(|x| Path::new(x).with_extension(&new_ext[1..]))
-        })
+            .and_then(|new_ext| {
+                self.filename
+                    .file_stem()
+                    .map(|x| Path::new(x).with_extension(&new_ext[1..]))
+            })
     }
 
     /// Return the first part of the multipart collection or `None`
@@ -161,7 +179,8 @@ impl<'a> Archive<'a> {
     ///
     /// This method does not make any FS operations and operates purely on strings.
     pub fn as_first_part(&mut self) {
-        self.first_part_option().map(|fp| self.filename = Cow::Owned(fp));
+        self.first_part_option()
+            .map(|fp| self.filename = Cow::Owned(fp));
     }
 
     /// Opens the underlying archive for listing its contents
@@ -194,12 +213,19 @@ impl<'a> Archive<'a> {
     /// # Panics
     ///
     /// Panics if `path` contains nul values.
-    pub fn open<T: AsRef<Path>>(self,
-                mode: OpenMode,
-                path: Option<T>,
-                operation: Operation)
-                -> UnrarResult<OpenArchive> {
-        OpenArchive::new(&self.filename, mode, self.password, path.as_ref().map(|x| x.as_ref()), operation)
+    pub fn open<T: AsRef<Path>>(
+        self,
+        mode: OpenMode,
+        path: Option<T>,
+        operation: Operation,
+    ) -> UnrarResult<OpenArchive> {
+        OpenArchive::new(
+            &self.filename,
+            mode,
+            self.password,
+            path.as_ref().map(|x| x.as_ref()),
+            operation,
+        )
     }
 }
 
@@ -235,25 +261,26 @@ pub struct OpenArchive {
 }
 
 impl OpenArchive {
-    fn new(filename: &Path,
-           mode: OpenMode,
-           password: Option<CString>,
-           destination: Option<&Path>,
-           operation: Operation)
-           -> UnrarResult<Self>
-    {
+    fn new(
+        filename: &Path,
+        mode: OpenMode,
+        password: Option<CString>,
+        destination: Option<&Path>,
+        operation: Operation,
+    ) -> UnrarResult<Self> {
         let destination = match destination {
-            Some(dest) => Some(WideCString::from_os_str(&dest).expect("Unexpected nul in destination")),
+            Some(dest) => {
+                Some(WideCString::from_os_str(&dest).expect("Unexpected nul in destination"))
+            }
             None => None,
         };
         // Panic here is our fault. Either something in Archive has added a nul to filename,
         // or filename was not checked for nuls on Archive creation.
         let filename = WideCString::from_os_str(&filename).expect("Unexpected nul in filename");
 
-        let mut data = native::OpenArchiveDataEx::new(filename.as_ptr() as *const _,
-                                                      mode as u32);
-        let handle = NonNull::new(unsafe { native::RAROpenArchiveEx(&mut data as *mut _) }
-                                  as *mut _);
+        let mut data = native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, mode as u32);
+        let handle =
+            NonNull::new(unsafe { native::RAROpenArchiveEx(&mut data as *mut _) } as *mut _);
         let result = Code::from(data.open_result).unwrap();
 
         if let Some(handle) = handle {
@@ -323,8 +350,12 @@ impl OpenArchive {
         }
     }
 
-    extern "C" fn callback(msg: native::UINT, user_data: native::LPARAM,
-                           p1: native::LPARAM, p2: native::LPARAM) -> c_int {
+    extern "C" fn callback(
+        msg: native::UINT,
+        user_data: native::LPARAM,
+        p1: native::LPARAM,
+        p2: native::LPARAM,
+    ) -> c_int {
         // println!("msg: {}, user_data: {}, p1: {}, p2: {}", msg, user_data, p1, p2);
         match msg {
             native::UCM_CHANGEVOLUMEW => {
@@ -356,24 +387,31 @@ impl Iterator for OpenArchive {
         }
         let mut volume: Option<WideCString> = None;
         unsafe {
-            native::RARSetCallback(self.handle.as_ptr(), Self::callback, &mut volume as *mut _ as native::LPARAM)
+            native::RARSetCallback(
+                self.handle.as_ptr(),
+                Self::callback,
+                &mut volume as *mut _ as native::LPARAM,
+            )
         }
         let mut header = native::HeaderDataEx::default();
-        let read_result =
-            Code::from(unsafe { native::RARReadHeaderEx(self.handle.as_ptr(), &mut header as *mut _) as u32 })
-                .unwrap();
+        let read_result = Code::from(unsafe {
+            native::RARReadHeaderEx(self.handle.as_ptr(), &mut header as *mut _) as u32
+        })
+        .unwrap();
         match read_result {
             Code::Success => {
                 let process_result = Code::from(unsafe {
                     native::RARProcessFileW(
                         self.handle.as_ptr(),
                         self.operation as i32,
-                        self.destination.as_ref().map(
-                            |x| x.as_ptr() as *const _
-                        ).unwrap_or(0 as *const _),
-                        0 as *const _
+                        self.destination
+                            .as_ref()
+                            .map(|x| x.as_ptr() as *const _)
+                            .unwrap_or(0 as *const _),
+                        0 as *const _,
                     ) as u32
-                }).unwrap();
+                })
+                .unwrap();
 
                 match process_result {
                     Code::Success | Code::EOpen => {
@@ -411,7 +449,7 @@ impl Drop for OpenArchive {
 }
 
 fn unpack_unp_size(unp_size: c_uint, unp_size_high: c_uint) -> usize {
-    ((unp_size_high as usize) << (8*std::mem::size_of::<c_uint>())) | (unp_size as usize)
+    ((unp_size_high as usize) << (8 * std::mem::size_of::<c_uint>())) | (unp_size as usize)
 }
 
 bitflags! {
@@ -439,7 +477,8 @@ pub struct Entry {
 
 impl Entry {
     pub fn is_split(&self) -> bool {
-        self.flags.contains(EntryFlags::SPLIT_BEFORE) || self.flags.contains(EntryFlags::SPLIT_AFTER)
+        self.flags.contains(EntryFlags::SPLIT_BEFORE)
+            || self.flags.contains(EntryFlags::SPLIT_AFTER)
     }
 
     pub fn is_directory(&self) -> bool {
@@ -470,8 +509,9 @@ impl fmt::Display for Entry {
 
 impl From<native::HeaderDataEx> for Entry {
     fn from(header: native::HeaderDataEx) -> Self {
-        let filename = unsafe { WideCString::from_ptr_with_nul(header.filename_w.as_ptr()
-                                                               as *const _, 1024) }.unwrap();
+        let filename =
+            unsafe { WideCString::from_ptr_with_nul(header.filename_w.as_ptr() as *const _, 1024) }
+                .unwrap();
 
         Entry {
             filename: PathBuf::from(filename.to_os_string()),
@@ -488,24 +528,27 @@ impl From<native::HeaderDataEx> for Entry {
 
 fn get_rar_extension<T: AsRef<Path>>(path: T) -> Option<String> {
     path.as_ref().extension().map(|ext| {
-        let pre_ext = path.as_ref().file_stem().and_then(|x| Path::new(x).extension());
+        let pre_ext = path
+            .as_ref()
+            .file_stem()
+            .and_then(|x| Path::new(x).extension());
         match pre_ext {
             Some(pre_ext) => format!(".{}.{}", pre_ext.to_string_lossy(), ext.to_string_lossy()),
-            None => format!(".{}", ext.to_string_lossy())
+            None => format!(".{}", ext.to_string_lossy()),
         }
     })
 }
 
 pub fn is_archive(s: &Path) -> bool {
-    get_rar_extension(s).and_then(|full_ext| {
-        EXTENSION.find(&full_ext).map(|_| ())
-    }).is_some()
+    get_rar_extension(s)
+        .and_then(|full_ext| EXTENSION.find(&full_ext).map(|_| ()))
+        .is_some()
 }
 
 pub fn is_multipart(s: &Path) -> bool {
-    get_rar_extension(s).and_then(|full_ext| {
-        MULTIPART_EXTENSION.find(&full_ext).map(|_| ())
-    }).is_some()
+    get_rar_extension(s)
+        .and_then(|full_ext| MULTIPART_EXTENSION.find(&full_ext).map(|_| ()))
+        .is_some()
 }
 
 #[cfg(test)]
@@ -515,43 +558,84 @@ mod tests {
 
     #[test]
     fn glob() {
-        assert_eq!(Archive::new("arc.part0010.rar").unwrap().all_parts(),
-                   PathBuf::from("arc.part????.rar"));
-        assert_eq!(Archive::new("archive.r100").unwrap().all_parts(),
-                   PathBuf::from("archive.r???"));
-        assert_eq!(Archive::new("archive.r9").unwrap().all_parts(), PathBuf::from("archive.r?"));
-        assert_eq!(Archive::new("archive.999").unwrap().all_parts(),
-                   PathBuf::from("archive.???"));
-        assert_eq!(Archive::new("archive.rar").unwrap().all_parts(),
-                   PathBuf::from("archive.rar"));
-        assert_eq!(Archive::new("random_string").unwrap().all_parts(),
-                   PathBuf::from("random_string"));
-        assert_eq!(Archive::new("v8/v8.rar").unwrap().all_parts(), PathBuf::from("v8/v8.rar"));
-        assert_eq!(Archive::new("v8/v8").unwrap().all_parts(), PathBuf::from("v8/v8"));
+        assert_eq!(
+            Archive::new("arc.part0010.rar").unwrap().all_parts(),
+            PathBuf::from("arc.part????.rar")
+        );
+        assert_eq!(
+            Archive::new("archive.r100").unwrap().all_parts(),
+            PathBuf::from("archive.r???")
+        );
+        assert_eq!(
+            Archive::new("archive.r9").unwrap().all_parts(),
+            PathBuf::from("archive.r?")
+        );
+        assert_eq!(
+            Archive::new("archive.999").unwrap().all_parts(),
+            PathBuf::from("archive.???")
+        );
+        assert_eq!(
+            Archive::new("archive.rar").unwrap().all_parts(),
+            PathBuf::from("archive.rar")
+        );
+        assert_eq!(
+            Archive::new("random_string").unwrap().all_parts(),
+            PathBuf::from("random_string")
+        );
+        assert_eq!(
+            Archive::new("v8/v8.rar").unwrap().all_parts(),
+            PathBuf::from("v8/v8.rar")
+        );
+        assert_eq!(
+            Archive::new("v8/v8").unwrap().all_parts(),
+            PathBuf::from("v8/v8")
+        );
     }
 
     #[test]
     fn first_part() {
-        assert_eq!(Archive::new("arc.part0010.rar").unwrap().first_part(),
-                   PathBuf::from("arc.part0001.rar"));
-        assert_eq!(Archive::new("archive.r100").unwrap().first_part(),
-                   PathBuf::from("archive.r001"));
-        assert_eq!(Archive::new("archive.r9").unwrap().first_part(), PathBuf::from("archive.r1"));
-        assert_eq!(Archive::new("archive.999").unwrap().first_part(),
-                   PathBuf::from("archive.001"));
-        assert_eq!(Archive::new("archive.rar").unwrap().first_part(),
-                   PathBuf::from("archive.rar"));
-        assert_eq!(Archive::new("random_string").unwrap().first_part(),
-                   PathBuf::from("random_string"));
-        assert_eq!(Archive::new("v8/v8.rar").unwrap().first_part(), PathBuf::from("v8/v8.rar"));
-        assert_eq!(Archive::new("v8/v8").unwrap().first_part(), PathBuf::from("v8/v8"));
+        assert_eq!(
+            Archive::new("arc.part0010.rar").unwrap().first_part(),
+            PathBuf::from("arc.part0001.rar")
+        );
+        assert_eq!(
+            Archive::new("archive.r100").unwrap().first_part(),
+            PathBuf::from("archive.r001")
+        );
+        assert_eq!(
+            Archive::new("archive.r9").unwrap().first_part(),
+            PathBuf::from("archive.r1")
+        );
+        assert_eq!(
+            Archive::new("archive.999").unwrap().first_part(),
+            PathBuf::from("archive.001")
+        );
+        assert_eq!(
+            Archive::new("archive.rar").unwrap().first_part(),
+            PathBuf::from("archive.rar")
+        );
+        assert_eq!(
+            Archive::new("random_string").unwrap().first_part(),
+            PathBuf::from("random_string")
+        );
+        assert_eq!(
+            Archive::new("v8/v8.rar").unwrap().first_part(),
+            PathBuf::from("v8/v8.rar")
+        );
+        assert_eq!(
+            Archive::new("v8/v8").unwrap().first_part(),
+            PathBuf::from("v8/v8")
+        );
     }
 
     #[test]
     fn is_archive() {
         assert_eq!(super::is_archive(&PathBuf::from("archive.rar")), true);
         assert_eq!(super::is_archive(&PathBuf::from("archive.part1.rar")), true);
-        assert_eq!(super::is_archive(&PathBuf::from("archive.part100.rar")), true);
+        assert_eq!(
+            super::is_archive(&PathBuf::from("archive.part100.rar")),
+            true
+        );
         assert_eq!(super::is_archive(&PathBuf::from("archive.r10")), true);
         assert_eq!(super::is_archive(&PathBuf::from("archive.part1rar")), false);
         assert_eq!(super::is_archive(&PathBuf::from("archive.rar\n")), false);
@@ -572,8 +656,8 @@ mod tests {
 
     #[test]
     fn combine_size() {
-	use super::unpack_unp_size;
-	let (high, low)=(1u32, 1464303715u32);
-	assert_eq!(unpack_unp_size(low, high), 5759271011);
+        use super::unpack_unp_size;
+        let (high, low) = (1u32, 1464303715u32);
+        assert_eq!(unpack_unp_size(low, high), 5759271011);
     }
 }

@@ -1,17 +1,23 @@
 extern crate unrar;
 
-use unrar::Archive;
 use unrar::archive::VolumeInfo;
+use unrar::Archive;
 
 #[test]
 fn volume() {
     let archive = Archive::new("data/version.rar").unwrap().list().unwrap();
     assert_eq!(archive.volume_info(), VolumeInfo::None);
 
-    let archive = Archive::new("data/archive.part1.rar").unwrap().list().unwrap();
+    let archive = Archive::new("data/archive.part1.rar")
+        .unwrap()
+        .list()
+        .unwrap();
     assert_eq!(archive.volume_info(), VolumeInfo::First);
 
-    let archive = Archive::new("data/100M.part00002.rar").unwrap().list().unwrap();
+    let archive = Archive::new("data/100M.part00002.rar")
+        .unwrap()
+        .list()
+        .unwrap();
     assert_eq!(archive.volume_info(), VolumeInfo::Subsequent);
 }
 
@@ -26,7 +32,10 @@ fn locked() {
 
 #[test]
 fn recovery_record() {
-    let archive = Archive::new("data/recovery-record.rar").unwrap().list().unwrap();
+    let archive = Archive::new("data/recovery-record.rar")
+        .unwrap()
+        .list()
+        .unwrap();
     assert!(archive.has_recovery_record());
 
     let archive = Archive::new("data/version.rar").unwrap().list().unwrap();
@@ -44,7 +53,10 @@ fn archive_comment() {
 
 #[test]
 fn encrypted_headers() {
-    let archive = Archive::new("data/comment-hpw-password.rar").unwrap().list().unwrap();
+    let archive = Archive::new("data/comment-hpw-password.rar")
+        .unwrap()
+        .list()
+        .unwrap();
     assert!(archive.has_encrypted_headers());
 
     let archive = Archive::new("data/version.rar").unwrap().list().unwrap();
