@@ -1,9 +1,9 @@
 use native;
+use std::result::Result;
 use num::FromPrimitive;
+use std::fmt;
 use std::error;
 use std::ffi;
-use std::fmt;
-use std::result::Result;
 
 enum_from_primitive! {
     #[derive(PartialEq, Eq, Debug, Clone, Copy)]
@@ -30,7 +30,10 @@ enum_from_primitive! {
         // This error is returned when attempting to unpack the reference
         // record without its source file.
         EReference = native::ERAR_EREFERENCE,
-        BadPassword = native::ERAR_BAD_PASSWORD
+        BadPassword = native::ERAR_BAD_PASSWORD,
+
+        // our own codes here
+        ENul = 0x10000,
     }
 }
 
@@ -42,26 +45,27 @@ pub enum When {
 }
 
 impl Code {
-    pub fn from(code: u32) -> Option<Self> {
-        Code::from_u32(code)
+    pub fn from(code: i32) -> Option<Self> {
+        Code::from_i32(code)
     }
 }
 
 #[derive(PartialEq)]
-pub struct UnrarError<T> {
+pub struct UnrarError {
     pub code: Code,
     pub when: When,
-    pub data: Option<T>,
 }
 
-impl<T> fmt::Debug for UnrarError<T> {
+impl std::error::Error for UnrarError {}
+
+impl fmt::Debug for UnrarError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}@{:?}", self.code, self.when)?;
         write!(f, " ({})", self)
     }
 }
 
-impl<T> fmt::Display for UnrarError<T> {
+impl fmt::Display for UnrarError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Code::*;
         use self::When::*;
@@ -86,29 +90,21 @@ impl<T> fmt::Display for UnrarError<T> {
             (Unknown, _) => write!(f, "Unknown error"),
             (EndArchive, _) => write!(f, "Archive end"),
             (Success, _) => write!(f, "Success"),
+            (ENul, _) => write!(f, "Nul error (nul found in String)"),
         }
     }
 }
 
-impl<T> UnrarError<T> {
-    pub fn new(code: Code, when: When, data: T) -> Self {
-        UnrarError {
-            code: code,
-            when: when,
-            data: Some(data),
-        }
-    }
-
+impl UnrarError {
     pub fn from(code: Code, when: When) -> Self {
         UnrarError {
             code: code,
             when: when,
-            data: None,
         }
     }
 }
 
-pub type UnrarResult<T> = Result<T, UnrarError<T>>;
+pub type UnrarResult<T> = Result<T, UnrarError>;
 
 #[derive(Debug)]
 pub struct NulError(usize);
