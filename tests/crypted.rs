@@ -1,17 +1,14 @@
 extern crate tempdir;
 extern crate unrar;
 
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::PathBuf;
-use tempdir::TempDir;
 use unrar::error::{Code, When};
 use unrar::Archive;
 
 #[test]
 fn list() {
     // No password needed in order to list contents
-    let mut entries = Archive::new("data/crypted.rar").unwrap().list().unwrap();
+    let mut entries = Archive::new("data/crypted.rar").open_for_listing().unwrap();
     assert_eq!(
         entries.next().unwrap().unwrap().filename,
         PathBuf::from(".gitignore")
@@ -20,36 +17,37 @@ fn list() {
 
 #[test]
 fn no_password() {
-    let t = TempDir::new("unrar").unwrap();
-    let mut arc = Archive::new("data/crypted.rar")
-        .unwrap()
-        .extract_to(t.path())
+    let arc = Archive::new("data/crypted.rar")
+        .open_for_processing()
         .unwrap();
-    let err = arc.next().unwrap().unwrap_err();
+    let header = arc.read_header();
+    assert!(matches!(header, Some(Ok(_))));
+    let read_result = header.unwrap().unwrap().read();
+    assert!(matches!(read_result, Err(_)));
+    let err = read_result.unwrap_err();
     assert_eq!(err.code, Code::MissingPassword);
     assert_eq!(err.when, When::Process);
 }
 
 #[test]
 fn version_cat() {
-    let t = TempDir::new("unrar").unwrap();
-    Archive::with_password("data/crypted.rar", "unrar")
+    let file = Archive::with_password("data/crypted.rar", "unrar")
+        .open_for_processing()
         .unwrap()
-        .extract_to(t.path())
+        .read_header()
         .unwrap()
-        .process()
-        .unwrap();
-    let mut file = File::open(t.path().join(".gitignore")).unwrap();
-    let mut s = String::new();
-    file.read_to_string(&mut s).unwrap();
+        .unwrap()
+        .read()
+        .unwrap()
+        .0;
+    let s = String::from_utf8(file).unwrap();
     assert_eq!(s, "target\nCargo.lock\n");
 }
 
 #[test]
 fn list_encrypted_headers() {
     let mut entries = Archive::with_password("data/comment-hpw-password.rar", "password")
-        .unwrap()
-        .list()
+        .open_for_listing()
         .unwrap();
     assert_eq!(
         entries.next().unwrap().unwrap().filename,
@@ -61,26 +59,24 @@ fn list_encrypted_headers() {
 fn no_password_list_encrypted_headers() {
     // Password needed in order to list contents
     let mut entries = Archive::new("data/comment-hpw-password.rar")
-        .unwrap()
-        .list()
+        .open_for_listing()
         .unwrap();
     let err = entries.next().unwrap().unwrap_err();
     assert_eq!(err.code, Code::MissingPassword);
     assert_eq!(err.when, When::Read);
-    assert!(err.data.is_none());
 }
 
 #[test]
 fn extract_encrypted_headers() {
-    let t = TempDir::new("unrar").unwrap();
-    Archive::with_password("data/comment-hpw-password.rar", "password")
+    let bytes = Archive::with_password("data/comment-hpw-password.rar", "password")
+        .open_for_processing()
         .unwrap()
-        .extract_to(t.path())
+        .read_header()
         .unwrap()
-        .process()
-        .unwrap();
-    let mut file = File::open(t.path().join(".gitignore")).unwrap();
-    let mut s = String::new();
-    file.read_to_string(&mut s).unwrap();
+        .unwrap()
+        .read()
+        .unwrap()
+        .0;
+    let s = String::from_utf8(bytes).unwrap();
     assert_eq!(s, "target\nCargo.lock\n");
 }

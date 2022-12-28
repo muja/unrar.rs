@@ -5,6 +5,7 @@ authors = [
   "Danyel Bayraktar <rust@danyel.io>",
   "vjoki <vjoki@zv.fi>",
 ]
+edition = "2021"
 
 license = "MIT"
 description = "list and extract RAR archives"
