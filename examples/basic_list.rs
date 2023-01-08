@@ -4,7 +4,7 @@ use unrar::Archive;
 
 fn main() {
     // Basic args parsing
-    // Usage: cargo run --example basic_list /to/archive.rar
+    // Usage: cargo run --example basic_list path/to/archive.rar
     let args = std::env::args();
     let file = args.skip(1).next().unwrap_or("archive.rar".to_owned());
 

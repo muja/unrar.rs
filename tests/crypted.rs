@@ -1,6 +1,3 @@
-extern crate tempdir;
-extern crate unrar;
-
 use std::path::PathBuf;
 use unrar::error::{Code, When};
 use unrar::Archive;

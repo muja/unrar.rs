@@ -1,40 +1,34 @@
-use native;
-use std::result::Result;
-use num::FromPrimitive;
-use std::fmt;
+use super::*;
 use std::error;
 use std::ffi;
+use std::fmt;
+use std::result::Result;
 
-enum_from_primitive! {
-    #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-    #[repr(i32)]
-    pub enum Code {
-        Success = native::ERAR_SUCCESS,
-        EndArchive = native::ERAR_END_ARCHIVE,
-        NoMemory = native::ERAR_NO_MEMORY,
-        BadData = native::ERAR_BAD_DATA,
-        BadArchive = native::ERAR_BAD_ARCHIVE,
-        UnknownFormat = native::ERAR_UNKNOWN_FORMAT,
-        EOpen = native::ERAR_EOPEN,
-        ECreate = native::ERAR_ECREATE,
-        EClose = native::ERAR_ECLOSE,
-        ERead = native::ERAR_EREAD,
-        EWrite = native::ERAR_EWRITE,
-        SmallBuf = native::ERAR_SMALL_BUF,
-        Unknown = native::ERAR_UNKNOWN,
-        MissingPassword = native::ERAR_MISSING_PASSWORD,
-        // From the UnRARDLL docs:
-        // When attempting to unpack a reference record (see RAR -oi switch),
-        // source file for this reference was not found.
-        // Entire archive needs to be unpacked to properly create file references.
-        // This error is returned when attempting to unpack the reference
-        // record without its source file.
-        EReference = native::ERAR_EREFERENCE,
-        BadPassword = native::ERAR_BAD_PASSWORD,
-
-        // our own codes here
-        ENul = 0x10000,
-    }
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+#[repr(i32)]
+pub enum Code {
+    Success = native::ERAR_SUCCESS,
+    EndArchive = native::ERAR_END_ARCHIVE,
+    NoMemory = native::ERAR_NO_MEMORY,
+    BadData = native::ERAR_BAD_DATA,
+    BadArchive = native::ERAR_BAD_ARCHIVE,
+    UnknownFormat = native::ERAR_UNKNOWN_FORMAT,
+    EOpen = native::ERAR_EOPEN,
+    ECreate = native::ERAR_ECREATE,
+    EClose = native::ERAR_ECLOSE,
+    ERead = native::ERAR_EREAD,
+    EWrite = native::ERAR_EWRITE,
+    SmallBuf = native::ERAR_SMALL_BUF,
+    Unknown = native::ERAR_UNKNOWN,
+    MissingPassword = native::ERAR_MISSING_PASSWORD,
+    // From the UnRARDLL docs:
+    // When attempting to unpack a reference record (see RAR -oi switch),
+    // source file for this reference was not found.
+    // Entire archive needs to be unpacked to properly create file references.
+    // This error is returned when attempting to unpack the reference
+    // record without its source file.
+    EReference = native::ERAR_EREFERENCE,
+    BadPassword = native::ERAR_BAD_PASSWORD,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -46,7 +40,26 @@ pub enum When {
 
 impl Code {
     pub fn from(code: i32) -> Option<Self> {
-        Code::from_i32(code)
+        use Code::*;
+        match code {
+            native::ERAR_SUCCESS => Some(Success),
+            native::ERAR_END_ARCHIVE => Some(EndArchive),
+            native::ERAR_NO_MEMORY => Some(NoMemory),
+            native::ERAR_BAD_DATA => Some(BadData),
+            native::ERAR_BAD_ARCHIVE => Some(BadArchive),
+            native::ERAR_UNKNOWN_FORMAT => Some(UnknownFormat),
+            native::ERAR_EOPEN => Some(EOpen),
+            native::ERAR_ECREATE => Some(ECreate),
+            native::ERAR_ECLOSE => Some(EClose),
+            native::ERAR_EREAD => Some(ERead),
+            native::ERAR_EWRITE => Some(EWrite),
+            native::ERAR_SMALL_BUF => Some(SmallBuf),
+            native::ERAR_UNKNOWN => Some(Unknown),
+            native::ERAR_MISSING_PASSWORD => Some(MissingPassword),
+            native::ERAR_EREFERENCE => Some(EReference),
+            native::ERAR_BAD_PASSWORD => Some(BadPassword),
+            _ => None,
+        }
     }
 }
 
@@ -90,17 +103,13 @@ impl fmt::Display for UnrarError {
             (Unknown, _) => write!(f, "Unknown error"),
             (EndArchive, _) => write!(f, "Archive end"),
             (Success, _) => write!(f, "Success"),
-            (ENul, _) => write!(f, "Nul error (nul found in String)"),
         }
     }
 }
 
 impl UnrarError {
     pub fn from(code: Code, when: When) -> Self {
-        UnrarError {
-            code: code,
-            when: when,
-        }
+        UnrarError { code, when }
     }
 }
 
@@ -121,8 +130,8 @@ impl error::Error for NulError {
     }
 }
 
-impl<C: widestring::UChar> From<widestring::NulError<C>> for NulError {
-    fn from(e: widestring::NulError<C>) -> NulError {
+impl<C> From<widestring::error::ContainsNul<C>> for NulError {
+    fn from(e: widestring::error::ContainsNul<C>) -> NulError {
         NulError(e.nul_position())
     }
 }
