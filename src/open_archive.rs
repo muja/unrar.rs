@@ -1,5 +1,5 @@
-use crate::error::*;
-use native;
+use super::error::*;
+use super::*;
 use std::ffi::CString;
 use std::fmt;
 use std::os::raw::{c_int, c_uint};
@@ -15,7 +15,7 @@ pub enum Operation {
     Extract = native::RAR_EXTRACT,
 }
 
-bitflags! {
+bitflags::bitflags! {
     #[derive(Default)]
     struct ArchiveFlags: u32 {
         const VOLUME = native::ROADF_VOLUME;
@@ -127,20 +127,14 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
     ) -> UnrarResult<Self> {
         let filename = WideCString::from_os_str(&filename).unwrap();
 
-        let mut data =
-            native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::CODE);
+        let mut data = native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::CODE);
         let handle =
             NonNull::new(unsafe { native::RAROpenArchiveEx(&mut data as *mut _) } as *mut _);
 
         let arc = handle.and_then(|handle| {
             if let Some(pw) = password {
                 let cpw = CString::new(pw).unwrap();
-                unsafe {
-                    native::RARSetPassword(
-                        handle.as_ptr(),
-                        cpw.as_ptr() as *const _
-                    )
-                }
+                unsafe { native::RARSetPassword(handle.as_ptr(), cpw.as_ptr() as *const _) }
             }
             Some(OpenArchive {
                 handle: Handle(handle),
@@ -175,10 +169,12 @@ impl Iterator for OpenArchive<List, CursorBeforeHeader> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match read_header(&self.handle) {
-            Some(Ok(header)) => match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
-                Ok(_) => Some(Ok(header)),
-                Err(s) => Some(Err(s)),
-            },
+            Some(Ok(header)) => {
+                match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
+                    Ok(_) => Some(Ok(header)),
+                    Err(s) => Some(Err(s)),
+                }
+            }
             None => None,
             Some(Err(x)) => Some(Err(x)),
         }
@@ -190,10 +186,12 @@ impl Iterator for OpenArchive<ListSplit, CursorBeforeHeader> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match read_header(&self.handle) {
-            Some(Ok(header)) => match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
-                Ok(_) => Some(Ok(header)),
-                Err(s) => Some(Err(s)),
-            },
+            Some(Ok(header)) => {
+                match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
+                    Ok(_) => Some(Ok(header)),
+                    Err(s) => Some(Err(s)),
+                }
+            }
             None => None,
             Some(Err(x)) => Some(Err(x)),
         }
@@ -251,9 +249,9 @@ impl OpenArchive<Process, CursorBeforeFile> {
 
     /// Extracts the file into the current working directory
     /// Returns the OpenArchive for further processing
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This function will panic if `base` contains nul characters.
     pub fn extract_with_base<P: AsRef<Path>>(
         self,
@@ -281,13 +279,9 @@ fn read_header(handle: &Handle) -> Option<UnrarResult<FileHeader>> {
         );
     }
     let mut header = native::HeaderDataEx::default();
-    let read_result = Code::from(unsafe {
-        native::RARReadHeaderEx(
-            handle.0.as_ptr(),
-            &mut header as *mut _
-        )
-    })
-    .unwrap();
+    let read_result =
+        Code::from(unsafe { native::RARReadHeaderEx(handle.0.as_ptr(), &mut header as *mut _) })
+            .unwrap();
     match read_result {
         Code::Success => Some(Ok(header.into())),
         Code::EndArchive => None,
@@ -340,17 +334,20 @@ impl<M: ProcessMode> Internal<M> {
         p1: native::LPARAM,
         p2: native::LPARAM,
     ) -> c_int {
-        println!("msg: {}, user_data: {}, p1: {}, p2: {}", msg, user_data, p1, p2);
+        println!(
+            "msg: {}, user_data: {}, p1: {}, p2: {}",
+            msg, user_data, p1, p2
+        );
         if user_data == 0 {
-            return 0
+            return 0;
         }
         let user_data = unsafe { &mut *(user_data as *mut Userdata<M::Output>) };
         match msg {
             native::UCM_CHANGEVOLUMEW => {
                 // 2048 seems to be the buffer size in unrar,
                 // also it's the maximum path length since 5.00.
-                let next = unsafe { WideCString::from_ptr_with_nul(p1 as *const _, 2048) }.ok();
-                user_data.1 = next;
+                let next = unsafe { WideCString::from_ptr_truncate(p1 as *const _, 2048) };
+                user_data.1 = Some(next);
                 match p2 {
                     // Next volume not found. -1 means stop
                     native::RAR_VOL_ASK => -1,
@@ -398,7 +395,7 @@ impl<M: ProcessMode> Internal<M> {
     }
 }
 
-bitflags! {
+bitflags::bitflags! {
     pub struct EntryFlags: u32 {
         const SPLIT_BEFORE = 0x1;
         const SPLIT_AFTER = 0x2;
@@ -456,8 +453,7 @@ impl fmt::Display for FileHeader {
 impl From<native::HeaderDataEx> for FileHeader {
     fn from(header: native::HeaderDataEx) -> Self {
         let filename =
-            unsafe { WideCString::from_ptr_with_nul(header.filename_w.as_ptr() as *const _, 1024) }
-                .unwrap();
+            unsafe { WideCString::from_ptr_truncate(header.filename_w.as_ptr() as *const _, 1024) };
 
         FileHeader {
             filename: PathBuf::from(filename.to_os_string()),

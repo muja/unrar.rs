@@ -10,7 +10,7 @@ macro_rules! mp_ext {
         r"(\.part|\.r?)(\d+)((?:\.rar)?)$"
     };
 }
-lazy_static! {
+lazy_static::lazy_static! {
     static ref MULTIPART_EXTENSION: Regex = Regex::new(mp_ext!()).unwrap();
     static ref EXTENSION: Regex = Regex::new(concat!(mp_ext!(), r"|\.rar$")).unwrap();
 }

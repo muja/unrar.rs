@@ -19,11 +19,6 @@ fn list_missing_volume() {
     for (expected, actual) in expected.into_iter().zip(archive.by_ref()) {
         assert_eq!(actual.unwrap().filename, PathBuf::from(expected));
     }
-    let data = archive.next().unwrap().unwrap();
-    assert_eq!(data.filename, PathBuf::from("vendor/unrar/archive.cpp"));
-    println!("{:?}", archive.next().unwrap());
-    // assert_eq!(
-    //     data.next_volume.map(PathBuf::from),
-    //     Some(PathBuf::from("data/archive.part2.rar"))
-    // );
+    let data = archive.next().unwrap().unwrap_err();
+    assert_eq!(format!("{data}"), "Could not open next volume");
 }

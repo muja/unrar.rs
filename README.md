@@ -5,40 +5,46 @@
 [![build](https://github.com/muja/unrar.rs/workflows/ci/badge.svg)](https://github.com/muja/unrar.rs/actions?query=workflow%3Aci)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](./README.md)
 
-
 High-level wrapper around the unrar C library provided by [rarlab](http://rarlab.com).
 
-Please look inside the [examples directory](./examples) to see how to use this library!  
+This library can only *extract* and *list* archives, it cannot *create* them.
+
+Please look inside the [examples directory](./examples) to see how to use this library.
 Specifically the [**lister**](./examples/lister.rs) example is well documented and advanced!
 
 Basic example to list archive entries:
 
 ```rust
-extern crate unrar;
+use unrar::Archive as RarArchive;
 
 fn main() {
-    for entry in unrar::Archive::new("archive.rar".into()).list().unwrap() {
+    for entry in RarArchive::new("archive.rar").open_for_listing().unwrap() {
         println!("{}", entry.unwrap());
     }
 }
 ```
 
-Run this example: `cargo run --example basic_list`.  
-Note that you need to put an `archive.rar` in the directory first.  
-For example, by using the `rar` CLI: `rar a archive.rar .`
+Run this example: `cargo run --example basic_list path/to/archive.rar`.
+You can create an archive by using the `rar` CLI: `rar a archive.rar .`
 
 # Features
 
 - [x] Multipart files
 - [x] Listing archives
 - [x] Extracting them
-- [x] Testing them (not fully tested yet)
+- [x] Reading them into memory (without extracting)
+- [x] Testing them
 - [x] Encrypted archives with password
 - [x] Linked statically against the unrar source.
 - [x] Build unrar C++ code from source
 - [x] Basic functionality that operates on filenames / paths (without reading archives)
 - [x] More documentation / RustDoc
 - [x] Tests
+
+# Non-Features
+
+- Creating archives
+- Pure Rust implementation
 
 # Contributing
 
