@@ -14,6 +14,7 @@ fn main() {
         .cpp(true) // Switch to C++ library compilation.
         .opt_level(2)
         .warnings(false)
+        .flag("-stdlib=libc++")
         .flag_if_supported("-fPIC")
         .flag_if_supported("-Wno-switch")
         .flag_if_supported("-Wno-parentheses")
