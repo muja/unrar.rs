@@ -60,5 +60,5 @@ fn main() {
                 Err(err) => writeln!(&mut stderr, "Error: {}", err).unwrap(),
             }
         }
-    };
+    }
 }

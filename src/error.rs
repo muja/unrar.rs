@@ -1,37 +1,36 @@
 use native;
-use num::FromPrimitive;
 use std::error;
 use std::ffi;
 use std::fmt;
 use std::result::Result;
+use num_enum::TryFromPrimitive;
 
-enum_from_primitive! {
-    #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-    #[repr(i32)]
-    pub enum Code {
-        Success = native::ERAR_SUCCESS,
-        EndArchive = native::ERAR_END_ARCHIVE,
-        NoMemory = native::ERAR_NO_MEMORY,
-        BadData = native::ERAR_BAD_DATA,
-        BadArchive = native::ERAR_BAD_ARCHIVE,
-        UnknownFormat = native::ERAR_UNKNOWN_FORMAT,
-        EOpen = native::ERAR_EOPEN,
-        ECreate = native::ERAR_ECREATE,
-        EClose = native::ERAR_ECLOSE,
-        ERead = native::ERAR_EREAD,
-        EWrite = native::ERAR_EWRITE,
-        SmallBuf = native::ERAR_SMALL_BUF,
-        Unknown = native::ERAR_UNKNOWN,
-        MissingPassword = native::ERAR_MISSING_PASSWORD,
-        // From the UnRARDLL docs:
-        // When attempting to unpack a reference record (see RAR -oi switch),
-        // source file for this reference was not found.
-        // Entire archive needs to be unpacked to properly create file references.
-        // This error is returned when attempting to unpack the reference
-        // record without its source file.
-        EReference = native::ERAR_EREFERENCE,
-        BadPassword = native::ERAR_BAD_PASSWORD
-    }
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy, TryFromPrimitive)]
+#[repr(i32)]
+pub enum Code {
+    Success = native::ERAR_SUCCESS,
+    EndArchive = native::ERAR_END_ARCHIVE,
+    NoMemory = native::ERAR_NO_MEMORY,
+    BadData = native::ERAR_BAD_DATA,
+    BadArchive = native::ERAR_BAD_ARCHIVE,
+    UnknownFormat = native::ERAR_UNKNOWN_FORMAT,
+    EOpen = native::ERAR_EOPEN,
+    ECreate = native::ERAR_ECREATE,
+    EClose = native::ERAR_ECLOSE,
+    ERead = native::ERAR_EREAD,
+    EWrite = native::ERAR_EWRITE,
+    SmallBuf = native::ERAR_SMALL_BUF,
+    Unknown = native::ERAR_UNKNOWN,
+    MissingPassword = native::ERAR_MISSING_PASSWORD,
+    // From the UnRARDLL docs:
+    // When attempting to unpack a reference record (see RAR -oi switch),
+    // source file for this reference was not found.
+    // Entire archive needs to be unpacked to properly create file references.
+    // This error is returned when attempting to unpack the reference
+    // record without its source file.
+    EReference = native::ERAR_EREFERENCE,
+    BadPassword = native::ERAR_BAD_PASSWORD
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -43,7 +42,9 @@ pub enum When {
 
 impl Code {
     pub fn from(code: u32) -> Option<Self> {
-        Code::from_u32(code)
+        use std::convert::TryFrom;
+        let code = i32::try_from(code).ok()?;
+        Code::try_from(code).ok()
     }
 }
 
