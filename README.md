@@ -1,7 +1,10 @@
 # unrar.rs
 
-[![Travis Build Status](https://travis-ci.org/muja/unrar.rs.svg)](https://travis-ci.org/muja/unrar.rs)
-[![crates.io](http://meritbadge.herokuapp.com/unrar)](https://crates.io/crates/unrar)
+[![crates.io](https://img.shields.io/crates/v/unrar.svg)](https://crates.io/crates/unrar)
+[![API docs](https://docs.rs/unrar/badge.svg)](https://docs.rs/unrar)
+[![build](https://github.com/muja/unrar.rs/workflows/ci/badge.svg)](https://github.com/muja/unrar.rs/actions?query=workflow%3Aci)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](./README.md)
+
 
 High-level wrapper around the unrar C library provided by [rarlab](http://rarlab.com).
 
