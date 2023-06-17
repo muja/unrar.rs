@@ -1,5 +1,3 @@
-extern crate unrar;
-
 use unrar::Archive;
 use std::path::PathBuf;
 

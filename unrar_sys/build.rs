@@ -1,5 +1,3 @@
-extern crate cc;
-
 fn main() {
     if cfg!(windows) {
         println!("cargo:rustc-flags=-lpowrprof");

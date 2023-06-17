@@ -3,18 +3,13 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-extern crate libc;
-
-#[cfg(all(windows, target_env = "msvc"))]
-extern crate winapi;
-
-#[cfg(feature = "std")]
 use libc::wchar_t;
+
 #[cfg(feature = "std")]
 use std::os::raw::{c_char, c_int, c_uchar, c_uint};
 
 #[cfg(not(feature = "std"))]
-use libc::{c_char, c_int, c_uchar, c_uint, wchar_t};
+use libc::{c_char, c_int, c_uchar, c_uint};
 
 // ----------------- ENV SPECIFIC ----------------- //
 

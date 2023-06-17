@@ -7,6 +7,7 @@ build = "build.rs"
 license = "MIT"
 description = "FFI bindings to unrar (with minimal abstractions)"
 repository = "https://github.com/muja/unrar.rs"
+edition = "2021"
 
 [features]
 default = ["std"]
@@ -18,5 +19,5 @@ libc = { version = "0.2", default-features = false }
 [build-dependencies]
 cc = "1"
 
-[target.'cfg(windows)'.dependencies]
+[target.'cfg(all(windows, target_env = "msvc"))'.dependencies]
 winapi = { version = "0.3", features = ["minwindef", "ntdef"] }

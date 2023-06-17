@@ -1,5 +1,3 @@
-extern crate unrar;
-
 use std::io::Write;
 use unrar::{Archive, ListSplit};
 

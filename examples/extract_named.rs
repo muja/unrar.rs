@@ -1,5 +1,3 @@
-extern crate unrar;
-
 use unrar::{error::UnrarResult, Archive};
 
 fn main() -> UnrarResult<()> {

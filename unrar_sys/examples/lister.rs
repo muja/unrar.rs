@@ -1,6 +1,3 @@
-extern crate unrar_sys;
-extern crate libc;
-
 use unrar_sys::*;
 use libc::{c_int, c_uint, c_long};
 use std::str;
