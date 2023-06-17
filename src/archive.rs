@@ -2,19 +2,44 @@ use crate::error::*;
 use crate::open_archive::{CursorBeforeHeader, List, ListSplit, OpenArchive, OpenMode, Process};
 use regex::Regex;
 use std::borrow::Cow;
+use std::sync::OnceLock;
 use std::iter::repeat;
 use std::path::{Path, PathBuf};
 
-macro_rules! mp_ext {
-    () => {
-        r"(\.part|\.r?)(\d+)((?:\.rar)?)$"
-    };
-}
-lazy_static::lazy_static! {
-    static ref MULTIPART_EXTENSION: Regex = Regex::new(mp_ext!()).unwrap();
-    static ref EXTENSION: Regex = Regex::new(concat!(mp_ext!(), r"|\.rar$")).unwrap();
+fn multipart_extension() -> &'static Regex {
+    static INSTANCE: OnceLock<Regex> = OnceLock::new();
+    INSTANCE.get_or_init(|| {
+        Regex::new(r"(\.part|\.r?)(\d+)((?:\.rar)?)$").unwrap()
+    })
 }
 
+fn extension() -> &'static Regex {
+    static INSTANCE: OnceLock<Regex> = OnceLock::new();
+    INSTANCE.get_or_init(|| {
+        Regex::new(r"(\.part|\.r?)(\d+)((?:\.rar)?)$|\.rar$").unwrap()
+    })
+}
+
+/// A RAR archive on the file system.
+/// 
+/// This struct provides two major classes of methods:
+///    1. methods that do not touch the FS. These are opinionated utility methods
+///         that are based on RAR path conventions out in the wild. Most commonly, multipart
+///         files usually have extensions such as `.part08.rar` or `.r08.rar`. Since extracting
+///         must start at the first part, it may be helpful to figure that out using, for instance,
+///         [`archive.as_first_part()`](Archive::as_first_part)
+///    2. methods that open the underlying path in the specified mode
+///         (possible modes are [`List`], [`ListSplit`] and [`Process`]).
+///         These methods have the word `open` in them, are fallible operations,
+///         return [`OpenArchive`](struct.OpenArchive.html) inside a `Result` and are as follows:
+///         - [`open_for_listing`](Archive::open_for_listing) and
+///             [`open_for_listing_split`](Archive::open_for_listing_split): list the archive
+///             entries (skipping over content/payload)
+///         - [`open_for_processing`](Archive::open_for_processing): process archive entries
+///             as well as content/payload
+///         - [`break_open`](Archive::break_open): read archive even if an error is returned,
+///             if possible. The [`OpenMode`](open_archive/struct.OpenMode.html) must be provided
+///             explicitly.
 pub struct Archive<'a> {
     filename: Cow<'a, Path>,
     password: Option<&'a [u8]>,
@@ -24,7 +49,7 @@ pub struct Archive<'a> {
 pub type Glob = PathBuf;
 
 impl<'a> Archive<'a> {
-    /// Creates an `Archive` object to operate on a plain RAR archive.
+    /// Creates an `Archive` object to operate on a plain non-encrypted RAR archive.
     pub fn new<T>(file: &'a T) -> Self
     where
         T: AsRef<Path> + ?Sized,
@@ -49,6 +74,11 @@ impl<'a> Archive<'a> {
         }
     }
 
+    /// returns the archive's path
+    pub fn filename(&self) -> &Path {
+        &self.filename
+    }
+
     /// Set the comment buffer of the underlying archive.
     /// Note: Comments are not supported yet so this method will have no effect.
     pub fn set_comments(&mut self, comments: &'a mut Vec<u8>) {
@@ -69,14 +99,33 @@ impl<'a> Archive<'a> {
         is_multipart(&self.filename)
     }
 
-    /// Returns a glob string covering all parts of the multipart collection or `None`
-    /// if the underlying archive is a single-part archive.
+    /// Returns a glob string covering all parts of the multipart collection or `None` if the
+    /// underlying archive does not appear to be a multipart archive (based solely on filename).
     ///
     /// This method does not make any FS operations and operates purely on strings.
+    /// 
+    /// # Example
+    /// 
+    /// Basic usage (multipart archive):
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let glob = Archive::new("my.archive.part01.rar").all_parts_option().unwrap();
+    /// 
+    /// assert_eq!(glob.as_os_str(), "my.archive.part??.rar");
+    /// ```
+    /// 
+    /// Single part archive:
+    /// ```
+    /// # use unrar::Archive;
+    /// let glob = Archive::new("my.archive.rar").all_parts_option();
+    /// 
+    /// assert_eq!(glob, None);
+    /// ```
     pub fn all_parts_option(&self) -> Option<Glob> {
         get_rar_extension(&self.filename)
             .and_then(|full_ext| {
-                MULTIPART_EXTENSION.captures(&full_ext).map(|captures| {
+                multipart_extension().captures(&full_ext).map(|captures| {
                     let mut replacement = String::from(captures.get(1).unwrap().as_str());
                     replacement.push_str(
                         &repeat("?")
@@ -94,10 +143,29 @@ impl<'a> Archive<'a> {
             })
     }
 
-    /// Returns a glob string covering all parts of the multipart collection or
-    /// a copy of the underlying archive's filename if it's a single-part archive.
+    /// Returns a glob string covering all parts of the multipart collection or `self.filename` if
+    /// the underlying archive does not appear to be a multipart archive (based solely on filename).
     ///
     /// This method does not make any FS operations and operates purely on strings.
+    /// 
+    /// # Examples
+    /// 
+    /// Basic usage (multipart archive):
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let glob = Archive::new("my.archive.part01.rar").all_parts();
+    /// 
+    /// assert_eq!(glob.as_os_str(), "my.archive.part??.rar");
+    /// ```
+    /// 
+    /// Single part archive:
+    /// ```
+    /// # use unrar::Archive;
+    /// let glob = Archive::new("my.archive.rar").all_parts();
+    /// 
+    /// assert_eq!(glob.as_os_str(), "my.archive.rar");
+    /// ```
     pub fn all_parts(&self) -> Glob {
         match self.all_parts_option() {
             Some(x) => x,
@@ -105,14 +173,34 @@ impl<'a> Archive<'a> {
         }
     }
 
-    /// Returns the nth part of this multi-part collection or `None`
-    /// if the underlying archive is single part
-    ///
+    /// Returns the nth part of this multi-part collection or `None` if
+    /// the underlying archive does not appear to be a multipart archive (based solely on filename).
+    /// 
     /// This method does not make any FS operations and operates purely on strings.
+    /// 
+    /// # Examples
+    /// 
+    /// Simple usage:
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let part42 = Archive::new("my.archive.part01.rar").nth_part(42).unwrap();
+    /// 
+    /// assert_eq!(part42.as_os_str(), "my.archive.part42.rar");
+    /// ```
+    /// 
+    /// Returns None for single-part archives:
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let part42 = Archive::new("my.archive.rar").nth_part(42);
+    /// 
+    /// assert_eq!(part42, None);
+    /// ```
     pub fn nth_part(&self, n: i32) -> Option<PathBuf> {
         get_rar_extension(&self.filename)
             .and_then(|full_ext| {
-                MULTIPART_EXTENSION.captures(&full_ext).map(|captures| {
+                multipart_extension().captures(&full_ext).map(|captures| {
                     let mut replacement = String::from(captures.get(1).unwrap().as_str());
                     // `n` padded with zeroes to the length of archive's number's length
                     replacement.push_str(&format!(
@@ -131,18 +219,70 @@ impl<'a> Archive<'a> {
             })
     }
 
-    /// Return the first part of the multipart collection or `None`
-    /// if the underlying archive is single part
-    ///
+    /// Return the first part of the multipart collection or `None` if
+    /// the underlying archive does not appear to be a multipart archive (based solely on filename).
+    /// 
     /// This method does not make any FS operations and operates purely on strings.
+    /// 
+    /// Equivalent to [`nth_part(1)`](Archive::nth_part).
+    /// 
+    /// # Examples
+    /// 
+    /// Simple usage:
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let part1 = Archive::new("my.archive.part42.rar").first_part_option().unwrap();
+    /// 
+    /// assert_eq!(part1.as_os_str(), "my.archive.part01.rar");
+    /// ```
+    /// 
+    /// Returns None for single-part archives:
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let part1 = Archive::new("my.archive.rar").first_part_option();
+    /// 
+    /// assert_eq!(part1, None);
+    /// ```
     pub fn first_part_option(&self) -> Option<PathBuf> {
         self.nth_part(1)
     }
 
-    /// Returns the first part of the multipart collection or
-    /// a copy of the underlying archive's filename if it's a single-part archive.
+    /// Returns the first part of the multipart collection or `self.filename` if
+    /// the underlying archive does not appear to be a multipart archive (based solely on filename).
     ///
     /// This method does not make any FS operations and operates purely on strings.
+    /// 
+    /// # Examples
+    /// 
+    /// Basic usage:
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let part1 = Archive::new("archive.part33.rar").first_part();
+    /// 
+    /// assert_eq!(part1.as_os_str(), "archive.part01.rar");
+    /// ```
+    /// 
+    /// Single part archive:
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let part1 = Archive::new("archive.rar").first_part();
+    /// 
+    /// assert_eq!(part1.as_os_str(), "archive.rar");
+    /// ```
+    /// 
+    /// Note that this will always return the underlying path
+    /// if a first part could not be found:
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let part1 = Archive::new("https://gibberish").first_part();
+    /// 
+    /// assert_eq!(part1.as_os_str(), "https://gibberish");
+    /// ```
     pub fn first_part(&self) -> PathBuf {
         match self.nth_part(1) {
             Some(x) => x,
@@ -150,10 +290,21 @@ impl<'a> Archive<'a> {
         }
     }
 
-    /// Changes the filename to point to the first part of the multipart collection.
-    /// Does nothing if it is a single-part archive.
+    /// Changes the filename to point to the first part of the multipart collection. Does nothing if
+    /// the underlying archive does not appear to be a multipart archive (based solely on filename).
     ///
     /// This method does not make any FS operations and operates purely on strings.
+    /// 
+    /// # Example
+    /// 
+    /// Basic usage:
+    /// 
+    /// ```
+    /// # use unrar::Archive;
+    /// let mut archive = Archive::new("some.004.rar");
+    /// archive.as_first_part();
+    /// assert_eq!(archive.filename().as_os_str(), "some.001.rar");
+    /// ```
     pub fn as_first_part(&mut self) {
         self.first_part_option()
             .map(|fp| self.filename = Cow::Owned(fp));
@@ -162,17 +313,38 @@ impl<'a> Archive<'a> {
     /// Opens the underlying archive for processing, that is, the payloads of each archive entry can be
     /// actively read. What actually happens with individual entries (e.g. read, extract, skip, test),
     /// can be specified during processing.
+    /// 
+    /// See also: [`Process`]
+    /// 
+    /// # Panics
+    ///
+    /// Panics if `self.filename` contains nul values.
     pub fn open_for_processing(self) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
         self.open(None)
     }
 
-    /// Opens the underlying archive for listing its contents
+    /// Opens the underlying archive for listing its entries, i.e. the payloads are skipped automatically.
+    /// 
+    /// See also: [`List`]
+    /// 
+    /// # Panics
+    ///
+    /// Panics if `self.filename` contains nul values.
     pub fn open_for_listing(self) -> UnrarResult<OpenArchive<List, CursorBeforeHeader>> {
         self.open(None)
     }
 
-    /// Opens the underlying archive for listing its contents
-    /// without omitting or pooling split entries
+    /// Opens the underlying archive for listing its entries without omitting or pooling split entries.
+    /// For a multipart archive, this means a file spanning the border of 2 parts will appear twice,
+    /// or even more often than that if it spans multiple parts, whereas in the normal list, it will
+    /// appear once.
+    /// 
+    /// See also: [`ListSplit`]
+    /// 
+    /// # Panics
+    ///
+    /// Panics if `self.filename` contains nul values.
+
     pub fn open_for_listing_split(self) -> UnrarResult<OpenArchive<ListSplit, CursorBeforeHeader>> {
         self.open(None)
     }
@@ -229,15 +401,11 @@ fn get_rar_extension<T: AsRef<Path>>(path: T) -> Option<String> {
 }
 
 pub fn is_archive(s: &Path) -> bool {
-    get_rar_extension(s)
-        .and_then(|full_ext| EXTENSION.find(&full_ext).map(|_| ()))
-        .is_some()
+    get_rar_extension(s).is_some_and(|e| extension().is_match(&e))
 }
 
 pub fn is_multipart(s: &Path) -> bool {
-    get_rar_extension(s)
-        .and_then(|full_ext| MULTIPART_EXTENSION.find(&full_ext).map(|_| ()))
-        .is_some()
+    get_rar_extension(s).is_some_and(|e| multipart_extension().is_match(&e))
 }
 
 #[cfg(test)]

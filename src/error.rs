@@ -1,8 +1,11 @@
+#![allow(missing_docs)]
+
 use super::*;
 use std::error;
 use std::ffi;
 use std::fmt;
 use std::result::Result;
+
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 #[repr(i32)]
