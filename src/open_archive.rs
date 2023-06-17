@@ -7,14 +7,6 @@ use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 use widestring::WideCString;
 
-#[repr(i32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Operation {
-    Skip = native::RAR_SKIP,
-    Test = native::RAR_TEST,
-    Extract = native::RAR_EXTRACT,
-}
-
 bitflags::bitflags! {
     #[derive(Default)]
     struct ArchiveFlags: u32 {
@@ -30,10 +22,14 @@ bitflags::bitflags! {
     }
 }
 
+/// Volume information on the file that was *initially* opened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VolumeInfo {
+    /// the *initially* opened file is a single-part archive
     None,
+    /// the *initially* opened file is the first volume in a multipart archive
     First,
+    /// the *initially* opened file is any volume but the first in a multipart archive
     Subsequent,
 }
 
@@ -46,6 +42,9 @@ impl Drop for Handle {
     }
 }
 
+/// An open RAR archive that can be read or processed.
+///
+/// See the [OpenArchive chapter](index.html#openarchive) for more information.
 #[derive(Debug)]
 pub struct OpenArchive<M: OpenMode, C: Cursor> {
     handle: Handle,
@@ -54,60 +53,128 @@ pub struct OpenArchive<M: OpenMode, C: Cursor> {
     marker: std::marker::PhantomData<M>,
 }
 type Userdata<T> = (T, Option<WideCString>);
+
+mod private {
+    use super::native;
+    pub trait Sealed {}
+    impl Sealed for super::CursorBeforeHeader {}
+    impl Sealed for super::CursorBeforeFile {}
+    impl Sealed for super::List {}
+    impl Sealed for super::ListSplit {}
+    impl Sealed for super::Process {}
+
+    #[repr(i32)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum Operation {
+        Skip = native::RAR_SKIP,
+        Test = native::RAR_TEST,
+        Extract = native::RAR_EXTRACT,
+    }
+
+    #[repr(u32)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum OpenModeValue {
+        Extract = native::RAR_OM_EXTRACT,
+        List = native::RAR_OM_LIST,
+        ListIncSplit = native::RAR_OM_LIST_INCSPLIT,
+    }
+}
+
+/// Type parameter for OpenArchive denoting a `read_header` operation must follow next.
+///
+/// See the chapter [OpenArchive: Cursors](index.html#openarchive-cursors) for more information.
 #[derive(Debug)]
 pub struct CursorBeforeHeader;
+/// Type parameter for OpenArchive denoting a `process_file` operation must follow next.
+///
+/// See the chapter [OpenArchive: Cursors](index.html#openarchive-cursors) for more information.
 #[derive(Debug)]
 pub struct CursorBeforeFile {
     header: FileHeader,
 }
-pub trait Cursor {}
+
+/// The Cursor trait enables archives to keep track of their state.
+///
+/// See the chapter [OpenArchive: Cursors](index.html#openarchive-cursors) for more information.
+pub trait Cursor: private::Sealed {}
 impl Cursor for CursorBeforeHeader {}
 impl Cursor for CursorBeforeFile {}
 
+/// An OpenMode for processing RAR archive entries.
+///
+/// Process allows more sophisticated operations in the `ProcessFile` step.
 #[derive(Debug)]
 pub struct Process;
 #[derive(Debug)]
+/// An OpenMode for listing RAR archive entries.
+///
+/// List mode will list all entries. The payload itself cannot be processed and instead can only
+/// be skipped over. This will yield one header per individual file, regardless of how many parts
+/// the file is split across.
 pub struct List;
+/// An OpenMode for listing RAR archive entries.
+///
+/// ListSplit mode will list all entries. The payload itself cannot be processed and instead can
+/// only be skipped over. This will yield one header per individual file per part if the file is
+/// split across multiple parts. The [`FileHeader::is_split`] method will return true in that case.
 #[derive(Debug)]
 pub struct ListSplit;
 
-pub trait OpenMode {
-    const CODE: u32;
+/// Mode with which the archive should be opened.
+///
+/// Possible modes are:
+///
+///    - [`List`](struct.List.html)
+///    - [`ListSplit`](struct.ListSplit.html)
+///    - [`Process`](struct.Process.html)
+pub trait OpenMode: private::Sealed {
+    const VALUE: private::OpenModeValue;
 }
 impl OpenMode for Process {
-    const CODE: u32 = native::RAR_OM_EXTRACT;
+    const VALUE: private::OpenModeValue = private::OpenModeValue::Extract;
 }
 impl OpenMode for List {
-    const CODE: u32 = native::RAR_OM_LIST;
+    const VALUE: private::OpenModeValue = private::OpenModeValue::List;
 }
 impl OpenMode for ListSplit {
-    const CODE: u32 = native::RAR_OM_LIST_INCSPLIT;
+    const VALUE: private::OpenModeValue = private::OpenModeValue::ListIncSplit;
 }
 
 impl<Mode: OpenMode, C: Cursor> OpenArchive<Mode, C> {
+    /// is the archive locked
     pub fn is_locked(&self) -> bool {
         self.flags.contains(ArchiveFlags::LOCK)
     }
-
+    
+    /// are the archive headers encrypted
     pub fn has_encrypted_headers(&self) -> bool {
         self.flags.contains(ArchiveFlags::ENC_HEADERS)
     }
 
+    /// does the archive have a recovery record
     pub fn has_recovery_record(&self) -> bool {
         self.flags.contains(ArchiveFlags::RECOVERY)
     }
 
+    /// does the archive have comments
     pub fn has_comment(&self) -> bool {
         self.flags.contains(ArchiveFlags::COMMENT)
     }
 
-    /// Solid archive, all files in a single compressed block.
+    /// is the archive solid (all files in a single compressed block).
     pub fn is_solid(&self) -> bool {
         self.flags.contains(ArchiveFlags::SOLID)
     }
 
-    /// Indicates whether the archive file is split into multiple volumes or not,
-    /// and if so, whether the file is the first volume or not.
+    /// Volume information on the file that was *initially* opened.
+    ///
+    /// returns
+    ///   - `VolumeInfo::None` if the opened file is a single-part archive
+    ///   - `VolumeInfo::First` if the opened file is the first volume in a multipart archive
+    ///   - `VolumeInfo::Subsequent` if the opened file is any other volume in a multipart archive
+    ///
+    /// Note that this value *never* changes from `First` to `Subsequent` by advancing to a
+    /// different volume.
     pub fn volume_info(&self) -> VolumeInfo {
         if self.flags.contains(ArchiveFlags::FIRST_VOLUME) {
             VolumeInfo::First
@@ -127,7 +194,7 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
     ) -> UnrarResult<Self> {
         let filename = WideCString::from_os_str(&filename).unwrap();
 
-        let mut data = native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::CODE);
+        let mut data = native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::VALUE as u32);
         let handle =
             NonNull::new(unsafe { native::RAROpenArchiveEx(&mut data as *mut _) } as *mut _);
 
@@ -154,6 +221,21 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
         }
     }
 
+    /// reads the next header of the underlying archive. The resulting OpenArchive will
+    /// be in "ProcessFile" mode, i.e. the file corresponding to the header (that has just
+    /// been read via this method call) will have to be read. Also contains header data
+    /// via [`archive.entry()`](OpenArchive::entry).
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let archive = unrar::Archive::new("data/version.rar").open_for_listing().unwrap().read_header();
+    /// assert!(archive.as_ref().is_some_and(Result::is_ok));
+    /// let archive = archive.unwrap().unwrap();
+    /// assert_eq!(archive.entry().filename.as_os_str(), "VERSION");
+    /// ```
     pub fn read_header(self) -> Option<UnrarResult<OpenArchive<Mode, CursorBeforeFile>>> {
         Some(read_header(&self.handle)?.map(|entry| OpenArchive {
             extra: CursorBeforeFile { header: entry },
@@ -199,11 +281,12 @@ impl Iterator for OpenArchive<ListSplit, CursorBeforeHeader> {
 }
 
 impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
-    // TODO better name
+    /// returns the file header for the file that follows which is to be processed next.
     pub fn entry(&self) -> &FileHeader {
         &self.extra.header
     }
 
+    /// skips over the next file, not doing anything with it.
     pub fn skip(self) -> UnrarResult<OpenArchive<M, CursorBeforeHeader>> {
         self.process_file::<Skip>(None, None)
     }
@@ -235,7 +318,7 @@ impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
 }
 
 impl OpenArchive<Process, CursorBeforeFile> {
-    /// Reads the underlying file into a Vec<u8>
+    /// Reads the underlying file into a `Vec<u8>`
     /// Returns the data as well as the owned Archive that can be processed further.
     pub fn read(self) -> UnrarResult<(Vec<u8>, OpenArchive<Process, CursorBeforeHeader>)> {
         Ok(self.process_file_x::<ReadToVec>(None, None)?)
@@ -247,7 +330,7 @@ impl OpenArchive<Process, CursorBeforeFile> {
         self.process_file::<Extract>(None, None)
     }
 
-    /// Extracts the file into the current working directory
+    /// Extracts the file into the current working directory.  
     /// Returns the OpenArchive for further processing
     ///
     /// # Panics
@@ -261,6 +344,12 @@ impl OpenArchive<Process, CursorBeforeFile> {
         self.process_file::<Extract>(Some(&wdest), None)
     }
 
+    /// Extracts the file into the specified directory.  
+    /// Returns the OpenArchive for further processing
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `base` contains nul characters.
     pub fn extract_to<P: AsRef<Path>>(
         self,
         dest: P,
@@ -290,26 +379,26 @@ fn read_header(handle: &Handle) -> Option<UnrarResult<FileHeader>> {
 }
 
 #[derive(Debug)]
-pub struct Skip;
+struct Skip;
 #[derive(Debug)]
-pub struct ReadToVec;
+struct ReadToVec;
 #[derive(Debug)]
-pub struct Extract;
+struct Extract;
 
-pub trait ProcessMode: core::fmt::Debug {
-    const OPERATION: Operation;
+trait ProcessMode: core::fmt::Debug {
+    const OPERATION: private::Operation;
     type Output: core::fmt::Debug + std::default::Default;
 
     fn process_data(data: &mut Self::Output, other: &[u8]);
 }
 impl ProcessMode for Skip {
-    const OPERATION: Operation = Operation::Skip;
+    const OPERATION: private::Operation = private::Operation::Skip;
     type Output = ();
 
     fn process_data(_: &mut Self::Output, _: &[u8]) {}
 }
 impl ProcessMode for ReadToVec {
-    const OPERATION: Operation = Operation::Test;
+    const OPERATION: private::Operation = private::Operation::Test;
     type Output = Vec<u8>;
 
     fn process_data(my: &mut Self::Output, other: &[u8]) {
@@ -317,7 +406,7 @@ impl ProcessMode for ReadToVec {
     }
 }
 impl ProcessMode for Extract {
-    const OPERATION: Operation = Operation::Extract;
+    const OPERATION: private::Operation = private::Operation::Extract;
     type Output = ();
 
     fn process_data(_: &mut Self::Output, _: &[u8]) {}
@@ -334,10 +423,6 @@ impl<M: ProcessMode> Internal<M> {
         p1: native::LPARAM,
         p2: native::LPARAM,
     ) -> c_int {
-        println!(
-            "msg: {}, user_data: {}, p1: {}, p2: {}",
-            msg, user_data, p1, p2
-        );
         if user_data == 0 {
             return 0;
         }
@@ -390,13 +475,13 @@ impl<M: ProcessMode> Internal<M> {
         .unwrap();
         match process_result {
             Code::Success => Ok(user_data.0),
-            Code::EOpen | _ => Err(UnrarError::from(process_result, When::Process)),
+            _ => Err(UnrarError::from(process_result, When::Process)),
         }
     }
 }
 
 bitflags::bitflags! {
-    pub struct EntryFlags: u32 {
+    struct EntryFlags: u32 {
         const SPLIT_BEFORE = 0x1;
         const SPLIT_AFTER = 0x2;
         const ENCRYPTED = 0x4;
@@ -406,32 +491,59 @@ bitflags::bitflags! {
     }
 }
 
+/// Metadata for an entry in a RAR archive
+/// 
+/// Created using the read_header methods in an OpenArchive, contains
+/// information for the file that follows which is to be processed next.
+#[allow(missing_docs)]
 #[derive(Debug)]
 pub struct FileHeader {
     pub filename: PathBuf,
-    pub flags: EntryFlags,
+    flags: EntryFlags,
     pub unpacked_size: usize,
     pub file_crc: u32,
     pub file_time: u32,
     pub method: u32,
     pub file_attr: u32,
-    pub next_volume: Option<PathBuf>,
 }
 
 impl FileHeader {
+    /// is this entry split across multiple volumes.
+    /// 
+    /// Will also work in open mode [`List`]
     pub fn is_split(&self) -> bool {
         self.flags.contains(EntryFlags::SPLIT_BEFORE)
             || self.flags.contains(EntryFlags::SPLIT_AFTER)
     }
 
+    /// is this entry split across multiple volumes, starting here
+    /// 
+    /// Will also work in open mode [`List`]
+    pub fn is_split_after(&self) -> bool {
+        self.flags.contains(EntryFlags::SPLIT_AFTER)
+    }
+
+    /// is this entry split across multiple volumes, starting here
+    /// 
+    /// Will always return false in open mode [`List`][^1].
+    /// 
+    /// [^1]: this claim is not proven, however, the DLL seems to always skip
+    /// files where this flag would have been set.
+    pub fn is_split_before(&self) -> bool {
+        self.flags.contains(EntryFlags::SPLIT_BEFORE)
+    }
+
+    /// is this entry a directory
     pub fn is_directory(&self) -> bool {
         self.flags.contains(EntryFlags::DIRECTORY)
     }
 
+    /// is this entry encrypted
     pub fn is_encrypted(&self) -> bool {
         self.flags.contains(EntryFlags::ENCRYPTED)
     }
 
+    /// is this entry a file
     pub fn is_file(&self) -> bool {
         !self.is_directory()
     }
@@ -463,15 +575,8 @@ impl From<native::HeaderDataEx> for FileHeader {
             file_time: header.file_time,
             method: header.method,
             file_attr: header.file_attr,
-            next_volume: None,
         }
     }
-}
-
-#[derive(Debug)]
-pub struct Entry<T> {
-    pub header: FileHeader,
-    pub data: T,
 }
 
 fn unpack_unp_size(unp_size: c_uint, unp_size_high: c_uint) -> usize {

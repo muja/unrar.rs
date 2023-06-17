@@ -30,7 +30,8 @@ fn main() {
             }    
         }
         Err(e) => {
-            // the error we passed in is always None if
+            // the error we passed in is always None
+            // if the archive could not be read at all
             debug_assert_eq!(possible_error, None);
             writeln!(&mut stderr, "Error: {}", e).unwrap();
         }
