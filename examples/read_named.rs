@@ -8,8 +8,7 @@ fn main() -> UnrarResult<()> {
     let name = args.next().unwrap_or("README.md".into());
 
     let mut archive = Archive::new(&file).open_for_processing().unwrap();
-    while let Some(header) = archive.read_header() {
-        let header = header?;
+    while let Some(header) = archive.read_header()? {
         archive = if header.entry().filename.as_os_str() == name {
             let (data, rest) = header.read()?;
             drop(rest); // close the archive

@@ -5,8 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Archive::new("../archive.rar")
             .open_for_processing()
             .unwrap();
-    while let Some(header) = archive.read_header() {
-        let header = header?;
+    while let Some(header) = archive.read_header()? {
         println!(
             "{} bytes: {}",
             header.entry().unpacked_size,

@@ -233,12 +233,12 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
     ///
     /// ```
     /// let archive = unrar::Archive::new("data/version.rar").open_for_listing().unwrap().read_header();
-    /// assert!(archive.as_ref().is_some_and(Result::is_ok));
+    /// assert!(archive.as_ref().is_ok_and(Option::is_some));
     /// let archive = archive.unwrap().unwrap();
     /// assert_eq!(archive.entry().filename.as_os_str(), "VERSION");
     /// ```
-    pub fn read_header(self) -> Option<UnrarResult<OpenArchive<Mode, CursorBeforeFile>>> {
-        Some(read_header(&self.handle)?.map(|entry| OpenArchive {
+    pub fn read_header(self) -> UnrarResult<Option<OpenArchive<Mode, CursorBeforeFile>>> {
+        Ok(read_header(&self.handle)?.map(|entry| OpenArchive {
             extra: CursorBeforeFile { header: entry },
             handle: self.handle,
             flags: self.flags,
@@ -252,14 +252,14 @@ impl Iterator for OpenArchive<List, CursorBeforeHeader> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match read_header(&self.handle) {
-            Some(Ok(header)) => {
+            Ok(Some(header)) => {
                 match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
                     Ok(_) => Some(Ok(header)),
                     Err(s) => Some(Err(s)),
                 }
             }
-            None => None,
-            Some(Err(x)) => Some(Err(x)),
+            Ok(None) => None,
+            Err(s) => Some(Err(s)),
         }
     }
 }
@@ -269,14 +269,14 @@ impl Iterator for OpenArchive<ListSplit, CursorBeforeHeader> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match read_header(&self.handle) {
-            Some(Ok(header)) => {
+            Ok(Some(header)) => {
                 match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
                     Ok(_) => Some(Ok(header)),
                     Err(s) => Some(Err(s)),
                 }
             }
-            None => None,
-            Some(Err(x)) => Some(Err(x)),
+            Ok(None) => None,
+            Err(s) => Some(Err(s)),
         }
     }
 }
@@ -360,7 +360,7 @@ impl OpenArchive<Process, CursorBeforeFile> {
     }
 }
 
-fn read_header(handle: &Handle) -> Option<UnrarResult<FileHeader>> {
+fn read_header(handle: &Handle) -> UnrarResult<Option<FileHeader>> {
     unsafe {
         native::RARSetCallback(
             handle.0.as_ptr(),
@@ -373,9 +373,9 @@ fn read_header(handle: &Handle) -> Option<UnrarResult<FileHeader>> {
         Code::from(unsafe { native::RARReadHeaderEx(handle.0.as_ptr(), &mut header as *mut _) })
             .unwrap();
     match read_result {
-        Code::Success => Some(Ok(header.into())),
-        Code::EndArchive => None,
-        _ => Some(Err(UnrarError::from(read_result, When::Read))),
+        Code::Success => Ok(Some(header.into())),
+        Code::EndArchive => Ok(None),
+        _ => Err(UnrarError::from(read_result, When::Read)),
     }
 }
 
