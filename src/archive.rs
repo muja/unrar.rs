@@ -297,13 +297,13 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let mut archive = Archive::new("some.004.rar");
-    /// archive.as_first_part();
+    /// let mut archive = Archive::new("some.004.rar").as_first_part();
     /// assert_eq!(archive.filename().as_os_str(), "some.001.rar");
     /// ```
-    pub fn as_first_part(&mut self) {
+    pub fn as_first_part(mut self) -> Self {
         self.first_part_option()
             .map(|fp| self.filename = Cow::Owned(fp));
+        self
     }
 
     /// Opens the underlying archive for processing, that is, the payloads of each archive entry can be
