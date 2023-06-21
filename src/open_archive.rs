@@ -145,7 +145,7 @@ impl<Mode: OpenMode, C: Cursor> OpenArchive<Mode, C> {
     pub fn is_locked(&self) -> bool {
         self.flags.contains(ArchiveFlags::LOCK)
     }
-    
+
     /// are the archive headers encrypted
     pub fn has_encrypted_headers(&self) -> bool {
         self.flags.contains(ArchiveFlags::ENC_HEADERS)
@@ -194,7 +194,8 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
     ) -> UnrarResult<Self> {
         let filename = WideCString::from_os_str(&filename).unwrap();
 
-        let mut data = native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::VALUE as u32);
+        let mut data =
+            native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::VALUE as u32);
         let handle =
             NonNull::new(unsafe { native::RAROpenArchiveEx(&mut data as *mut _) } as *mut _);
 
@@ -330,7 +331,7 @@ impl OpenArchive<Process, CursorBeforeFile> {
         self.process_file::<Extract>(None, None)
     }
 
-    /// Extracts the file into the current working directory.  
+    /// Extracts the file into the specified directory.  
     /// Returns the OpenArchive for further processing
     ///
     /// # Panics
@@ -492,7 +493,7 @@ bitflags::bitflags! {
 }
 
 /// Metadata for an entry in a RAR archive
-/// 
+///
 /// Created using the read_header methods in an OpenArchive, contains
 /// information for the file that follows which is to be processed next.
 #[allow(missing_docs)]
@@ -509,7 +510,7 @@ pub struct FileHeader {
 
 impl FileHeader {
     /// is this entry split across multiple volumes.
-    /// 
+    ///
     /// Will also work in open mode [`List`]
     pub fn is_split(&self) -> bool {
         self.flags.contains(EntryFlags::SPLIT_BEFORE)
@@ -517,16 +518,16 @@ impl FileHeader {
     }
 
     /// is this entry split across multiple volumes, starting here
-    /// 
+    ///
     /// Will also work in open mode [`List`]
     pub fn is_split_after(&self) -> bool {
         self.flags.contains(EntryFlags::SPLIT_AFTER)
     }
 
     /// is this entry split across multiple volumes, starting here
-    /// 
+    ///
     /// Will always return false in open mode [`List`][^1].
-    /// 
+    ///
     /// [^1]: this claim is not proven, however, the DLL seems to always skip
     /// files where this flag would have been set.
     pub fn is_split_before(&self) -> bool {
