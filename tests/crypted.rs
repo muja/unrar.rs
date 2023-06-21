@@ -18,7 +18,7 @@ fn no_password() {
         .open_for_processing()
         .unwrap();
     let header = arc.read_header();
-    assert!(matches!(header, Some(Ok(_))));
+    assert!(matches!(header, Ok(Some(_))));
     let read_result = header.unwrap().unwrap().read();
     assert!(matches!(read_result, Err(_)));
     let err = read_result.unwrap_err();

@@ -102,7 +102,7 @@ Here's what a function that returns the first content of a file could look like:
 ```rust
 fn first_file_content<P: AsRef<Path>>(path: P) -> UnrarResult<Vec<u8>> {
     let archive = Archive::new(&path).open_for_processing()?; // cursor: before header
-    let archive = archive.read_header().expect("empty archive")?; // cursor: before file
+    let archive = archive.read_header()?.expect("empty archive"); // cursor: before file
     dbg!(&archive.entry().filename);
     let (data, _rest) = archive.read()?; // cursor: before header
     Ok(data)
