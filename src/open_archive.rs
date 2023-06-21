@@ -49,6 +49,7 @@ impl Drop for Handle {
 pub struct OpenArchive<M: OpenMode, C: Cursor> {
     handle: Handle,
     flags: ArchiveFlags,
+    damaged: bool,
     extra: C,
     marker: std::marker::PhantomData<M>,
 }
@@ -184,6 +185,46 @@ impl<Mode: OpenMode, C: Cursor> OpenArchive<Mode, C> {
             VolumeInfo::None
         }
     }
+
+    /// unsets the `damaged` flag so that `Iterator` will not refuse to yield elements.
+    ///
+    /// Normally, when an error is returned during iteration, the archive remembers this
+    /// so that subsequent calls to `next` return `None` immediately. This is to prevent
+    /// the same error from recurring over and over again, leading to endless loops in programs
+    /// that might not have considered this. However, maybe there are errors that can be recovered
+    /// from? That's where this method might come in handy if you really know what you're doing.
+    /// However, should that be the case, I urge you to submit an issue / PR with an archive where
+    /// the recoverable error can be reproduced so I can exclude that case from "irrecoverable
+    /// errors" (currently all errors).
+    ///
+    /// Use at your own risk. Might be removed in future releases if somehow it can be verified
+    /// which errors are recoverable and which are not.
+    ///
+    /// # Example how you *might* use this
+    ///
+    /// ```no_run
+    /// use unrar::{Archive, error::{When, Code}};
+    /// 
+    /// let mut archive = Archive::new("corrupt.rar").open_for_listing().expect("archive error");
+    /// loop {
+    ///     let mut error = None;
+    ///     for result in &mut archive {
+    ///         match result {
+    ///             Ok(entry) => println!("{entry}"),
+    ///             Err(e) => error = Some(e),
+    ///         }
+    ///     }
+    ///     match error {
+    ///         // your special recoverable error, please submit a PR with reproducible archive
+    ///         Some(e) if (e.when, e.code) == (When::Process, Code::BadData) => archive.force_heal(),
+    ///         Some(e) => panic!("irrecoverable error: {e}"),
+    ///         None => break,
+    ///     }
+    /// }
+    /// ```
+    pub fn force_heal(&mut self) {
+        self.damaged = false;
+    }
 }
 
 impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
@@ -206,6 +247,7 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
             }
             Some(OpenArchive {
                 handle: Handle(handle),
+                damaged: false,
                 flags: ArchiveFlags::from_bits(data.flags).unwrap(),
                 extra: CursorBeforeHeader,
                 marker: std::marker::PhantomData,
@@ -240,6 +282,7 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
     pub fn read_header(self) -> UnrarResult<Option<OpenArchive<Mode, CursorBeforeFile>>> {
         Ok(read_header(&self.handle)?.map(|entry| OpenArchive {
             extra: CursorBeforeFile { header: entry },
+            damaged: self.damaged,
             handle: self.handle,
             flags: self.flags,
             marker: std::marker::PhantomData,
@@ -251,15 +294,24 @@ impl Iterator for OpenArchive<List, CursorBeforeHeader> {
     type Item = Result<FileHeader, UnrarError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.damaged {
+            return None;
+        }
         match read_header(&self.handle) {
             Ok(Some(header)) => {
                 match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
                     Ok(_) => Some(Ok(header)),
-                    Err(s) => Some(Err(s)),
+                    Err(s) => {
+                        self.damaged = true;
+                        Some(Err(s))
+                    }
                 }
             }
             Ok(None) => None,
-            Err(s) => Some(Err(s)),
+            Err(s) => {
+                self.damaged = true;
+                Some(Err(s))
+            }
         }
     }
 }
@@ -268,15 +320,24 @@ impl Iterator for OpenArchive<ListSplit, CursorBeforeHeader> {
     type Item = Result<FileHeader, UnrarError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.damaged {
+            return None;
+        }
         match read_header(&self.handle) {
             Ok(Some(header)) => {
                 match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
                     Ok(_) => Some(Ok(header)),
-                    Err(s) => Some(Err(s)),
+                    Err(s) => {
+                        self.damaged = true;
+                        Some(Err(s))
+                    }
                 }
             }
             Ok(None) => None,
-            Err(s) => Some(Err(s)),
+            Err(s) => {
+                self.damaged = true;
+                Some(Err(s))
+            }
         }
     }
 }
@@ -309,6 +370,7 @@ impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
             Internal::<PM>::process_file_raw(&self.handle, path, file)?,
             OpenArchive {
                 extra: CursorBeforeHeader,
+                damaged: self.damaged,
                 handle: self.handle,
                 flags: self.flags,
                 marker: std::marker::PhantomData,
