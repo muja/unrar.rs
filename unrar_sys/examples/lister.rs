@@ -26,12 +26,13 @@ fn main() {
             _ => 0,
         }
     }
-    let mut data = OpenArchiveData::new(CString::new(file).unwrap().as_ptr(), RAR_OM_LIST_INCSPLIT);
+    let file_cstr = CString::new(file).unwrap();
+    let mut data = OpenArchiveData::new(file_cstr.as_ptr(), RAR_OM_LIST_INCSPLIT);
     let handle = unsafe { RAROpenArchive(&mut data as *mut _) };
     assert_eq!(data.open_result, 0);
     assert_eq!(handle.is_null(), false);
     let mut next_path = String::with_capacity(1024);
-    unsafe { RARSetCallback(handle, callback, &mut next_path as *mut String as c_long) };
+    unsafe { RARSetCallback(handle, Some(callback), &mut next_path as *mut String as c_long) };
     let mut header = HeaderData::default();
     let mut result = 0;
     let mut process_result;
