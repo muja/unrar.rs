@@ -13,7 +13,7 @@ fn main() {
         writeln!(&mut stderr, "Please pass an archive as argument!").unwrap();
         std::process::exit(0)
     });
-    extern "C" fn callback(msg: c_uint, user_data: c_long, p1: c_long, p2: c_long) -> c_int {
+    extern "C" fn callback(msg: c_uint, user_data: LPARAM, p1: LPARAM, p2: LPARAM) -> c_int {
         match (msg, p2) {
             (UCM_CHANGEVOLUME, RAR_VOL_ASK) => {
                 let ptr = p1 as *const _;
@@ -36,7 +36,7 @@ fn main() {
         RARSetCallback(
             handle,
             Some(callback),
-            &mut next_path as *mut String as c_long,
+            &mut next_path as *mut String as LPARAM,
         )
     };
     let mut header = HeaderData::default();
