@@ -37,3 +37,5 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Test unrar_sys library
+      run: cargo test --verbose --package=unrar_sys
