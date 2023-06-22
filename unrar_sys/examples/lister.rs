@@ -1,6 +1,6 @@
-use unrar_sys::*;
-use libc::{c_int, c_uint, c_long};
+use libc::{c_int, c_long, c_uint};
 use std::str;
+use unrar_sys::*;
 
 use std::ffi::{CStr, CString};
 use std::fs;
@@ -32,7 +32,13 @@ fn main() {
     assert_eq!(data.open_result, 0);
     assert_eq!(handle.is_null(), false);
     let mut next_path = String::with_capacity(1024);
-    unsafe { RARSetCallback(handle, Some(callback), &mut next_path as *mut String as c_long) };
+    unsafe {
+        RARSetCallback(
+            handle,
+            Some(callback),
+            &mut next_path as *mut String as c_long,
+        )
+    };
     let mut header = HeaderData::default();
     let mut result = 0;
     let mut process_result;
@@ -49,9 +55,10 @@ fn main() {
             writeln!(&mut stderr, "Not beginning of archive! Still continuing").unwrap();
         }
         first = false;
-        let s = str::from_utf8(unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes())
-            .unwrap();
-        process_result = unsafe { RARProcessFile(handle, RAR_SKIP, std::ptr::null(), std::ptr::null()) };
+        let s =
+            str::from_utf8(unsafe { CStr::from_ptr(header.filename.as_ptr()) }.to_bytes()).unwrap();
+        process_result =
+            unsafe { RARProcessFile(handle, RAR_SKIP, std::ptr::null(), std::ptr::null()) };
         println!("{}", s);
         match process_result {
             ERAR_SUCCESS => (),
