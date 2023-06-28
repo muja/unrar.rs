@@ -423,11 +423,12 @@ impl OpenArchive<Process, CursorBeforeFile> {
 }
 
 fn read_header(handle: &Handle) -> UnrarResult<Option<FileHeader>> {
+    let mut userdata: Userdata<<Skip as ProcessMode>::Output> = Default::default();
     unsafe {
         native::RARSetCallback(
             handle.0.as_ptr(),
             Some(Internal::<Skip>::callback),
-            std::ptr::null_mut() as *mut u8 as native::LPARAM,
+            &mut userdata as *mut _ as native::LPARAM,
         );
     }
     let mut header = native::HeaderDataEx::default();
