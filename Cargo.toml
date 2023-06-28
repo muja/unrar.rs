@@ -13,7 +13,6 @@ repository = "https://github.com/muja/unrar.rs"
 
 [dependencies]
 regex = "1"
-lazy_static = "1"
 bitflags = "1"
 widestring = "1"
 
