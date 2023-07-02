@@ -366,6 +366,31 @@ impl<'a> Archive<'a> {
     /// did occur. Note that this error will never be set if an Err is returned, i.e. if we
     /// were not able to read the archive.
     ///
+    /// # Example: I don't care if there was a recoverable error
+    ///
+    /// ```no_run
+    /// # use unrar::{Archive, List, UnrarResult};
+    /// # fn x() -> UnrarResult<()> {
+    /// let mut open_archive = Archive::new("file").break_open::<List>(None)?;
+    /// // use open_archive
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Example: I want to know if there was a recoverable error
+    ///
+    /// ```no_run
+    /// # use unrar::{Archive, List, UnrarResult};
+    /// # fn x() -> UnrarResult<()> {
+    /// let mut possible_error = None;
+    /// let mut open_archive = Archive::new("file").break_open::<List>(Some(&mut possible_error))?;
+    /// // check the error, e.g.:
+    /// possible_error.map(|error| eprintln!("recoverable error occurred: {error}"));
+    /// // use open_archive
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
     /// # Panics
     ///
     /// Panics if `path` contains nul values.
