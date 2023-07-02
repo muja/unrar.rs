@@ -106,9 +106,10 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let glob = Archive::new("path/my.archive.part01.rar").all_parts_option().unwrap();
+    /// # use std::path::PathBuf;
+    /// let glob = Archive::new("path/my.archive.part01.rar").all_parts_option();
     ///
-    /// assert_eq!(glob.as_os_str(), "path/my.archive.part??.rar");
+    /// assert_eq!(glob, Some(PathBuf::from("path/my.archive.part??.rar")));
     /// ```
     ///
     /// Single part archive:
@@ -151,17 +152,19 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
+    /// # use std::path::PathBuf;
     /// let glob = Archive::new("path/my.archive.part01.rar").all_parts();
     ///
-    /// assert_eq!(glob.as_os_str(), "path/my.archive.part??.rar");
+    /// assert_eq!(glob, PathBuf::from("path/my.archive.part??.rar"));
     /// ```
     ///
     /// Single part archive:
     /// ```
     /// # use unrar::Archive;
+    /// # use std::path::PathBuf;
     /// let glob = Archive::new("path/my.archive.rar").all_parts();
     ///
-    /// assert_eq!(glob.as_os_str(), "path/my.archive.rar");
+    /// assert_eq!(glob, PathBuf::from("path/my.archive.rar"));
     /// ```
     pub fn all_parts(&self) -> Glob {
         match self.all_parts_option() {
@@ -181,9 +184,10 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
+    /// # use std::path::PathBuf;
     /// let part42 = Archive::new("path/my.archive.part01.rar").nth_part(42).unwrap();
     ///
-    /// assert_eq!(part42.as_os_str(), "path/my.archive.part42.rar");
+    /// assert_eq!(part42, PathBuf::from("path/my.archive.part42.rar"));
     /// ```
     ///
     /// Returns None for single-part archives:
@@ -230,9 +234,10 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
+    /// # use std::path::PathBuf;
     /// let part1 = Archive::new("path/my.archive.part42.rar").first_part_option().unwrap();
     ///
-    /// assert_eq!(part1.as_os_str(), "path/my.archive.part01.rar");
+    /// assert_eq!(part1, PathBuf::from("path/my.archive.part01.rar"));
     /// ```
     ///
     /// Returns None for single-part archives:
@@ -258,18 +263,20 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
+    /// # use std::path::PathBuf;
     /// let part1 = Archive::new("path/archive.part33.rar").first_part();
     ///
-    /// assert_eq!(part1.as_os_str(), "path/archive.part01.rar");
+    /// assert_eq!(part1, PathBuf::from("path/archive.part01.rar"));
     /// ```
     ///
     /// Single part archive:
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let part1 = Archive::new("archive.rar").first_part();
+    /// # use std::path::PathBuf;
+    /// let part1 = Archive::new("path/archive.rar").first_part();
     ///
-    /// assert_eq!(part1.as_os_str(), "archive.rar");
+    /// assert_eq!(part1, PathBuf::from("path/archive.rar"));
     /// ```
     ///
     /// Note that this will always return the underlying path
@@ -277,9 +284,10 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
+    /// # use std::path::PathBuf;
     /// let part1 = Archive::new("https://gibberish").first_part();
     ///
-    /// assert_eq!(part1.as_os_str(), "https://gibberish");
+    /// assert_eq!(part1, PathBuf::from("https://gibberish"));
     /// ```
     pub fn first_part(&self) -> PathBuf {
         match self.nth_part(1) {
@@ -299,8 +307,9 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
+    /// # use std::path::PathBuf;
     /// let mut archive = Archive::new("path/some.004.rar").as_first_part();
-    /// assert_eq!(archive.filename().as_os_str(), "path/some.001.rar");
+    /// assert_eq!(archive.filename(), PathBuf::from("path/some.001.rar"));
     /// ```
     pub fn as_first_part(mut self) -> Self {
         self.first_part_option()
