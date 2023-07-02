@@ -411,15 +411,15 @@ impl<'a> Archive<'a> {
 }
 
 fn get_rar_extension<T: AsRef<Path>>(path: T) -> Option<String> {
-    path.as_ref().extension().map(|ext| {
+    path.as_ref().extension().and_then(|ext| {
         let pre_ext = path
             .as_ref()
             .file_stem()
             .and_then(|x| Path::new(x).extension());
-        match pre_ext {
-            Some(pre_ext) => format!(".{}.{}", pre_ext.to_string_lossy(), ext.to_string_lossy()),
-            None => format!(".{}", ext.to_string_lossy()),
-        }
+        Some(match pre_ext {
+            Some(pre_ext) => format!(".{}.{}", pre_ext.to_str()?, ext.to_str()?),
+            None => format!(".{}", ext.to_str()?),
+        })
     })
 }
 
