@@ -106,15 +106,15 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let glob = Archive::new("my.archive.part01.rar").all_parts_option().unwrap();
+    /// let glob = Archive::new("path/my.archive.part01.rar").all_parts_option().unwrap();
     ///
-    /// assert_eq!(glob.as_os_str(), "my.archive.part??.rar");
+    /// assert_eq!(glob.as_os_str(), "path/my.archive.part??.rar");
     /// ```
     ///
     /// Single part archive:
     /// ```
     /// # use unrar::Archive;
-    /// let glob = Archive::new("my.archive.rar").all_parts_option();
+    /// let glob = Archive::new("path/my.archive.rar").all_parts_option();
     ///
     /// assert_eq!(glob, None);
     /// ```
@@ -133,9 +133,10 @@ impl<'a> Archive<'a> {
                 })
             })
             .and_then(|new_ext| {
-                self.filename
-                    .file_stem()
-                    .map(|x| Path::new(x).with_extension(&new_ext[1..]))
+                self.filename.file_stem().map(|x| {
+                    self.filename
+                        .with_file_name(Path::new(x).with_extension(&new_ext[1..]))
+                })
             })
     }
 
@@ -150,17 +151,17 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let glob = Archive::new("my.archive.part01.rar").all_parts();
+    /// let glob = Archive::new("path/my.archive.part01.rar").all_parts();
     ///
-    /// assert_eq!(glob.as_os_str(), "my.archive.part??.rar");
+    /// assert_eq!(glob.as_os_str(), "path/my.archive.part??.rar");
     /// ```
     ///
     /// Single part archive:
     /// ```
     /// # use unrar::Archive;
-    /// let glob = Archive::new("my.archive.rar").all_parts();
+    /// let glob = Archive::new("path/my.archive.rar").all_parts();
     ///
-    /// assert_eq!(glob.as_os_str(), "my.archive.rar");
+    /// assert_eq!(glob.as_os_str(), "path/my.archive.rar");
     /// ```
     pub fn all_parts(&self) -> Glob {
         match self.all_parts_option() {
@@ -180,16 +181,16 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let part42 = Archive::new("my.archive.part01.rar").nth_part(42).unwrap();
+    /// let part42 = Archive::new("path/my.archive.part01.rar").nth_part(42).unwrap();
     ///
-    /// assert_eq!(part42.as_os_str(), "my.archive.part42.rar");
+    /// assert_eq!(part42.as_os_str(), "path/my.archive.part42.rar");
     /// ```
     ///
     /// Returns None for single-part archives:
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let part42 = Archive::new("my.archive.rar").nth_part(42);
+    /// let part42 = Archive::new("path/my.archive.rar").nth_part(42);
     ///
     /// assert_eq!(part42, None);
     /// ```
@@ -209,9 +210,10 @@ impl<'a> Archive<'a> {
                 })
             })
             .and_then(|new_ext| {
-                self.filename
-                    .file_stem()
-                    .map(|x| Path::new(x).with_extension(&new_ext[1..]))
+                self.filename.file_stem().map(|x| {
+                    self.filename
+                        .with_file_name(Path::new(x).with_extension(&new_ext[1..]))
+                })
             })
     }
 
@@ -228,16 +230,16 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let part1 = Archive::new("my.archive.part42.rar").first_part_option().unwrap();
+    /// let part1 = Archive::new("path/my.archive.part42.rar").first_part_option().unwrap();
     ///
-    /// assert_eq!(part1.as_os_str(), "my.archive.part01.rar");
+    /// assert_eq!(part1.as_os_str(), "path/my.archive.part01.rar");
     /// ```
     ///
     /// Returns None for single-part archives:
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let part1 = Archive::new("my.archive.rar").first_part_option();
+    /// let part1 = Archive::new("path/my.archive.rar").first_part_option();
     ///
     /// assert_eq!(part1, None);
     /// ```
@@ -256,9 +258,9 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let part1 = Archive::new("archive.part33.rar").first_part();
+    /// let part1 = Archive::new("path/archive.part33.rar").first_part();
     ///
-    /// assert_eq!(part1.as_os_str(), "archive.part01.rar");
+    /// assert_eq!(part1.as_os_str(), "path/archive.part01.rar");
     /// ```
     ///
     /// Single part archive:
@@ -297,8 +299,8 @@ impl<'a> Archive<'a> {
     ///
     /// ```
     /// # use unrar::Archive;
-    /// let mut archive = Archive::new("some.004.rar").as_first_part();
-    /// assert_eq!(archive.filename().as_os_str(), "some.001.rar");
+    /// let mut archive = Archive::new("path/some.004.rar").as_first_part();
+    /// assert_eq!(archive.filename().as_os_str(), "path/some.001.rar");
     /// ```
     pub fn as_first_part(mut self) -> Self {
         self.first_part_option()
