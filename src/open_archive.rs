@@ -564,7 +564,7 @@ bitflags::bitflags! {
 pub struct FileHeader {
     pub filename: PathBuf,
     flags: EntryFlags,
-    pub unpacked_size: usize,
+    pub unpacked_size: u64,
     pub file_crc: u32,
     pub file_time: u32,
     pub method: u32,
@@ -643,8 +643,8 @@ impl From<native::HeaderDataEx> for FileHeader {
     }
 }
 
-fn unpack_unp_size(unp_size: c_uint, unp_size_high: c_uint) -> usize {
-    ((unp_size_high as usize) << (8 * std::mem::size_of::<c_uint>())) | (unp_size as usize)
+fn unpack_unp_size(unp_size: c_uint, unp_size_high: c_uint) -> u64 {
+    ((unp_size_high as u64) << (8 * std::mem::size_of::<c_uint>())) | (unp_size as u64)
 }
 
 #[cfg(test)]
