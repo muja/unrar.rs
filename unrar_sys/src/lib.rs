@@ -13,7 +13,7 @@ use libc::{c_char, c_int, c_uchar, c_uint};
 
 // ----------------- ENV SPECIFIC ----------------- //
 
-#[cfg(all(windows, target_env = "msvc"))]
+#[cfg(windows)]
 mod env {
     pub use {
         winapi::shared::minwindef::{LPARAM, UINT, UCHAR, INT},
@@ -22,7 +22,7 @@ mod env {
 }
 
 
-#[cfg(not(all(windows, target_env = "msvc")))]
+#[cfg(not(windows))]
 mod env {
     use super::*;
 
