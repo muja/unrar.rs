@@ -13,7 +13,7 @@ use libc::{c_char, c_int, c_uchar, c_uint};
 
 // ----------------- ENV SPECIFIC ----------------- //
 
-#[cfg(all(windows, target_env = "msvc"))]
+#[cfg(windows)]
 mod env {
     pub use {
         winapi::shared::minwindef::{LPARAM, UINT, UCHAR, INT},
@@ -22,7 +22,7 @@ mod env {
 }
 
 
-#[cfg(not(all(windows, target_env = "msvc")))]
+#[cfg(not(windows))]
 mod env {
     use super::*;
 
@@ -205,6 +205,10 @@ pub struct OpenArchiveDataEx {
 // ----------------- BINDINGS ----------------- //
 
 #[link(name = "unrar", kind = "static")]
+#[cfg_attr(all(windows, target_env = "gnu"), link(name = "stdc++", kind = "static", modifiers = "-bundle"))]
+#[cfg_attr(target_os = "macos", link(name = "c++"))]
+#[cfg_attr(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"), link(name = "c++"))]
+#[cfg_attr(target_os = "linux", link(name = "stdc++"))]
 extern "C" {
     pub fn RAROpenArchive(data: *const OpenArchiveData) -> *const Handle;
 
