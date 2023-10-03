@@ -47,11 +47,13 @@
 #define WINVER _WIN32_WINNT_VISTA
 #define _WIN32_WINNT _WIN32_WINNT_VISTA
 #else
+#undef WINVER
 #define WINVER _WIN32_WINNT_WINXP
+#undef _WIN32_WINNT
 #define _WIN32_WINNT _WIN32_WINNT_WINXP
 #endif
 
-#if !defined(ZIPSFX)
+#if !defined(ZIPSFX) && !defined(RAR_SMP)
 #define RAR_SMP
 #endif
 
@@ -60,9 +62,15 @@
 #include <windows.h>
 #include <prsht.h>
 #include <shlwapi.h>
+
+#ifdef _MSC_VER
 #pragma comment(lib, "Shlwapi.lib")
 #include <PowrProf.h>
 #pragma comment(lib, "PowrProf.lib")
+#else
+#include <powrprof.h>
+#endif /* _MSC_VER */
+
 #include <shellapi.h>
 #include <shlobj.h>
 #include <winioctl.h>
