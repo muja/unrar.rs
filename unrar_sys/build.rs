@@ -9,7 +9,6 @@ fn main() {
         println!("cargo:rustc-link-lib=pthread");
     }
     let files: Vec<String> = [
-        "rar",
         "strlist",
         "strfn",
         "pathfn",
@@ -28,7 +27,6 @@ fn main() {
         "crc",
         "rawread",
         "encname",
-        "resource",
         "match",
         "timefn",
         "rdwrfn",
@@ -62,9 +60,11 @@ fn main() {
     cc::Build::new()
         .cpp(true) // Switch to C++ library compilation.
         .opt_level(2)
+        .std("c++20")
+        // by default cc crate tries to link against dynamic stdlib, which causes problems on windows-gnu target
+        .cpp_link_stdlib(None)
         .warnings(false)
-        .flag("-std=c++11")
-        .flag_if_supported("-stdlib=libc++")
+        .extra_warnings(false)
         .flag_if_supported("-fPIC")
         .flag_if_supported("-Wno-switch")
         .flag_if_supported("-Wno-parentheses")
@@ -76,6 +76,7 @@ fn main() {
         .flag_if_supported("-Wno-unused-function")
         .flag_if_supported("-Wno-missing-braces")
         .flag_if_supported("-Wno-unknown-pragmas")
+        .flag_if_supported("-Wno-deprecated-declarations")
         .define("_FILE_OFFSET_BITS", Some("64"))
         .define("_LARGEFILE_SOURCE", None)
         .define("RAR_SMP", None)
