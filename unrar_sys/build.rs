@@ -65,6 +65,7 @@ fn main() {
         .cpp_link_stdlib(None)
         .warnings(false)
         .extra_warnings(false)
+        .flag_if_supported("-w") // inhibit all warnings on gcc
         .flag_if_supported("-stdlib=libc++")
         .flag_if_supported("-fPIC")
         .flag_if_supported("-Wno-switch")
