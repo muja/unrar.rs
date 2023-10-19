@@ -407,12 +407,12 @@ impl OpenArchive<Process, CursorBeforeFile> {
         self.process_file::<Extract>(Some(&wdest), None)
     }
 
-    /// Extracts the file into the specified directory.  
+    /// Extracts the file into the specified file.
     /// Returns the OpenArchive for further processing
     ///
     /// # Panics
     ///
-    /// This function will panic if `base` contains nul characters.
+    /// This function will panic if `dest` contains nul characters.
     pub fn extract_to<P: AsRef<Path>>(
         self,
         dest: P,
