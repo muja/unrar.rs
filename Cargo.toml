@@ -7,7 +7,7 @@ authors = [
 ]
 edition = "2021"
 
-license = "MIT"
+license = "MIT OR Apache-2.0"
 description = "list and extract RAR archives"
 repository = "https://github.com/muja/unrar.rs"
 
