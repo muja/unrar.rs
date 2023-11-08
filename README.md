@@ -162,7 +162,13 @@ If you need help using the library, feel free to create a new discussion or open
 
 # License
 
-While this crate uses the MIT license for the Rust parts,
-the embedded [C++ library](./unrar_sys/vendor/unrar) has a different license.
+The parts authored by this library's contributors are licensed under either of
 
-For more informations, see its [license file](./unrar_sys/vendor/unrar/license.txt).
+  * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
+    http://www.apache.org/licenses/LICENSE-2.0)
+  * MIT license ([LICENSE-MIT](LICENSE-MIT) or
+    http://opensource.org/licenses/MIT)
+
+at your option.
+
+The embedded [C/C++ library](./unrar_sys/vendor/unrar) uses its own license. For more informations, see its [license file](./unrar_sys/vendor/unrar/license.txt).
