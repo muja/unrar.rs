@@ -4,7 +4,7 @@ version = "0.3.1"
 authors = ["Danyel Bayraktar <rust@danyel.io>"]
 
 build = "build.rs"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 description = "FFI bindings to unrar (with minimal abstractions)"
 repository = "https://github.com/muja/unrar.rs"
 edition = "2021"
