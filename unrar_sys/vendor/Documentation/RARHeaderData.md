@@ -31,7 +31,7 @@ struct RARHeaderData
 </pre>
 
 <h3>Description</h3>
-<p>This structure is used by <a href="RARReadHeader.htm">RARReadHeader</a>
+<p>This structure is used by <a href="RARReadHeader.md">RARReadHeader</a>
 function.</p>
 
 <h3>Structure fields</h3>
@@ -175,7 +175,7 @@ function.</p>
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RARReadHeader.htm">RARReadHeader</a> function.
+  <a href="RARReadHeader.md">RARReadHeader</a> function.
 </blockquote>
 
 </body>

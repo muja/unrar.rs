@@ -13,13 +13,13 @@
 <p>Open RAR archive and allocate memory structures.</p>
 <p>This function is obsolete. It does not support Unicode names
 and does not allow to specify the callback function. It is recommended
-to use <a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a> instead.<p>
+to use <a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a> instead.<p>
 
 <h3>Parameters</h3>
 
 <i>ArchiveData</i>
 <blockquote>
-Points to <a href="RAROpenArchiveData.htm">RAROpenArchiveData structure</a>.
+Points to <a href="RAROpenArchiveData.md">RAROpenArchiveData structure</a>.
 </blockquote>
 
 <h3>Return values</h3>
@@ -29,7 +29,7 @@ Archive handle or NULL in case of error.
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RAROpenArchiveData.htm">RAROpenArchiveData</a> structure.
+  <a href="RAROpenArchiveData.md">RAROpenArchiveData</a> structure.
 </blockquote>
 
 

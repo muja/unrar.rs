@@ -23,7 +23,7 @@ struct RAROpenArchiveData
 </pre>
 
 <h3>Description</h3>
-<p>This structure is used by <a href="RAROpenArchive.htm">RAROpenArchive</a>
+<p>This structure is used by <a href="RAROpenArchive.md">RAROpenArchive</a>
 function.</p>
 
 <h3>Structure fields</h3>
@@ -129,7 +129,7 @@ function.</p>
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RAROpenArchive.htm">RAROpenArchive</a> function.
+  <a href="RAROpenArchive.md">RAROpenArchive</a> function.
 </blockquote>
 
 </body>

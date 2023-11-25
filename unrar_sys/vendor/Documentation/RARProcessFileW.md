@@ -7,8 +7,7 @@
 
 <body>
 
-<h3>
-int PASCAL RARProcessFile(HANDLE hArcData,int Operation,char *DestPath,char *DestName)</h3>
+<h3>int PASCAL RARProcessFileW(HANDLE hArcData,int Operation,wchar_t *DestPath,wchar_t *DestName)</h3>
 
 <h3>Description</h3>
 
@@ -21,16 +20,14 @@ or tests the current file and sets the archive position to the next file.</p>
 <p>If open mode is RAR_OM_LIST, then a call to this function will skip
 the current file and set the archive position to the next file.</p>
 
-<p>It is recommended to use <a href="RARProcessFileW.htm">RARProcessFileW</a>
-insted of this function, because RARProcessFileW supports Unicode.</p>
 
 <h3>Parameters</h3>
 
 <i>hArcData</i>
 <blockquote>
 This parameter should contain the archive handle obtained from
-<a href="RAROpenArchive.htm">RAROpenArchive</a> or
-<a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a> function call.
+<a href="RAROpenArchive.md">RAROpenArchive</a> or
+<a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a> function call.
 </blockquote>
 
 <i>Operation</i>
@@ -62,25 +59,19 @@ This parameter should contain the archive handle obtained from
 
 <i>DestPath</i>
 <blockquote>
-  <p>This parameter should point to a zero terminated string, containing
-  the destination directory to place the extracted files to. If DestPath
-  is equal to NULL, it means extracting to the current directory.
+  <p>This parameter should point to a zero terminated Unicode string,
+  containing the destination directory to place the extracted files to.
+  If DestPath is equal to NULL, it means extracting to the current directory.
   This parameter has meaning only if DestName is NULL.</p>
-
-  <p>This parameter must be in OEM encoding. If necessary, use CharToOem
-  to convert text to OEM before passing it as DestPath.</p>
 </blockquote>
 
 <i>DestName</i>
 <blockquote>
-  <p>This parameter should point to a zero terminated string, containing
-  the full path and name to assign to extracted file or it can be NULL
-  to use the default name. If DestName is defined (not NULL),
-  it overrides both the original file name stored in the archive
-  and path specified in DestPath setting.</p>
-
-  <p>This parameter must be in OEM encoding. If necessary, use CharToOem
-  to convert text to OEM before passing it as DestName.</p>
+  <p>This parameter should point to a zero terminated Unicode string,
+  containing the full path and name to assign to extracted file
+  or it can be NULL to use the default name. If DestName is defined
+  (not NULL), it overrides both the original file name stored
+  in the archive and path specified in DestPath setting.</p>
 </blockquote>
 
 
@@ -110,7 +101,7 @@ in RAR 5.0 format</td></tr>
 <h3>Notes</h3>
 <blockquote>
   If you wish to cancel extraction, return -1 when processing UCM_PROCESSDATA
-  message in <a href="RARCallback.htm">user defined callback function</a>.
+  message in <a href="RARCallback.md">user defined callback function</a>.
 </blockquote>
 
 </body>

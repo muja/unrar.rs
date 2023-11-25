@@ -14,8 +14,8 @@ int CALLBACK CallbackProc(UINT msg,LPARAM UserData,LPARAM P1,LPARAM P2);
 <h3>Description</h3>
 <p>This function is called by UnRAR.dll library to process different
 UnRAR events listed below. You can specify the address of this function
-either in <a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a> (preferable)
-or in <a href="RARSetCallback.htm">RARSetCallback</a> (obsolete)</p>
+either in <a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a> (preferable)
+or in <a href="RARSetCallback.md">RARSetCallback</a> (obsolete)</p>
 
 <h3>Function parameters</h3>
 
@@ -105,8 +105,8 @@ or in <a href="RARSetCallback.htm">RARSetCallback</a> (obsolete)</p>
 <blockquote>
   <p>User defined value passed to RARSetCallback. You can specify it,
   when defining the callback function in 
-  <a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a>
-  or <a href="RARSetCallback.htm">RARSetCallback</a></p>
+  <a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a>
+  or <a href="RARSetCallback.md">RARSetCallback</a></p>
 </blockquote>
 
 
