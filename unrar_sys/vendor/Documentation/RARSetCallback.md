@@ -13,13 +13,13 @@ LPARAM UserData)</h3>
 
 <h3>Description</h3>
 
-<p>Set a <a href="RARCallback.htm">user defined callback function</a>
+<p>Set a <a href="RARCallback.md">user defined callback function</a>
 to process UnRAR events.</p>
 
 <p>RARSetCallback is obsolete and less preferable way to specify the callback
 function. Recommended approach is to set <i>Callback</i> and <i>UserData</i>
-fields in <a href="RAROpenArchiveDataEx.htm">RAROpenArchiveDataEx</a>
-structure, when calling <a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a>.
+fields in <a href="RAROpenArchiveDataEx.md">RAROpenArchiveDataEx</a>
+structure, when calling <a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a>.
 If you use RARSetCallback, you will not be able to read the archive comment
 in archives with encrypted headers. If you do not need the archive comment,
 you can continue to use RARSetCallback.</p>
@@ -29,13 +29,13 @@ you can continue to use RARSetCallback.</p>
 <i>hArcData</i>
 <blockquote>
 This parameter should contain the archive handle obtained from
-<a href="RAROpenArchive.htm">RAROpenArchive</a> or
-<a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a> function call.
+<a href="RAROpenArchive.md">RAROpenArchive</a> or
+<a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a> function call.
 </blockquote>
 
 <i>Callback</i>
 <blockquote>
-  <p>Address of <a href="RARCallback.htm">user defined callback function</a>
+  <p>Address of <a href="RARCallback.md">user defined callback function</a>
   to process UnRAR events.</p>
   <p>Set it to NULL if you do not want to define the callback function.
   Callback function is required to process multivolume and encrypted
@@ -45,7 +45,7 @@ This parameter should contain the archive handle obtained from
 <i>UserData</i>
 <blockquote>
   <p>User defined value, which will be passed to 
-  <a href="RARCallback.htm">callback function.</a></p>
+  <a href="RARCallback.md">callback function.</a></p>
 </blockquote>
 
 
@@ -56,7 +56,7 @@ None.
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RARCallback.htm">User defined callback function</a>
+  <a href="RARCallback.md">User defined callback function</a>
 </blockquote>
 
 </body>

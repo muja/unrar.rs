@@ -11,7 +11,7 @@
 
 <h3>Description</h3>
 <p>Open RAR archive and allocate memory structures. Replaces the obsolete
-<a href="RAROpenArchive.htm">RAROpenArchive</a> providing more options
+<a href="RAROpenArchive.md">RAROpenArchive</a> providing more options
 and Unicode names support.
 </p>
 
@@ -19,7 +19,7 @@ and Unicode names support.
 
 <i>ArchiveData</i>
 <blockquote>
-Points to <a href="RAROpenArchiveDataEx.htm">RAROpenArchiveDataEx structure</a>.
+Points to <a href="RAROpenArchiveDataEx.md">RAROpenArchiveDataEx structure</a>.
 </blockquote>
 
 <h3>Return values</h3>
@@ -29,7 +29,7 @@ Archive handle or NULL in case of error.
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RAROpenArchiveDataEx.htm">RAROpenArchiveDataEx</a> structure.
+  <a href="RAROpenArchiveDataEx.md">RAROpenArchiveDataEx</a> structure.
 </blockquote>
 
 

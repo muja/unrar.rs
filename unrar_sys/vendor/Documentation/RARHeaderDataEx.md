@@ -49,7 +49,7 @@ struct RARHeaderDataEx
 </pre>
 
 <h3>Description</h3>
-<p>This structure is used by <a href="RARReadHeaderEx.htm">RARReadHeaderEx</a>
+<p>This structure is used by <a href="RARReadHeaderEx.md">RARReadHeaderEx</a>
 function. Please fill either the entire structure or at least its Reserved
 field with zeroes before passing to RARReadHeaderEx.</p>
 
@@ -299,7 +299,7 @@ field with zeroes before passing to RARReadHeaderEx.</p>
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RARReadHeaderEx.htm">RARReadHeaderEx</a> function.
+  <a href="RARReadHeaderEx.md">RARReadHeaderEx</a> function.
 </blockquote>
 
 </body>

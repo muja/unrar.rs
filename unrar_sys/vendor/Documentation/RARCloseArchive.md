@@ -20,8 +20,8 @@ due to an error.</p>
 <i>hArcData</i>
 <blockquote>
 This parameter should contain the archive handle obtained from
-<a href="RAROpenArchive.htm">RAROpenArchive</a> or
-<a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a> function call.
+<a href="RAROpenArchive.md">RAROpenArchive</a> or
+<a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a> function call.
 </blockquote>
 
 <h3>Return values</h3>
@@ -34,7 +34,7 @@ This parameter should contain the archive handle obtained from
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a> function.
+  <a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a> function.
 </blockquote>
 
 </body>

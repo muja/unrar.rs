@@ -14,7 +14,7 @@ void PASCAL RARSetChangeVolProc(HANDLE hArcData,
 
 <h3>Description</h3>
 
-Obsolete. Use <a href="RARCallback.htm">the callback function</a> instead.
+Obsolete. Use <a href="RARCallback.md">the callback function</a> instead.
 
 </body>
 

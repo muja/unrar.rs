@@ -7,13 +7,10 @@
 
 <body>
 
-<h3>int PASCAL RARReadHeader(HANDLE hArcData,struct RARHeaderData *HeaderData)</h3>
+<h3>int PASCAL RARReadHeaderEx(HANDLE hArcData,struct RARHeaderDataEx *HeaderData)</h3>
 
 <h3>Description</h3>
 <p>Read a file header from archive.</p>
-<p>This function is obsolete. It does not support Unicode names
-and 64 bit file sizes. It is recommended to use 
-<a href="RARReadHeaderEx.htm">RARReadHeaderEx</a> instead.<p>
 
 
 <h3>Parameters</h3>
@@ -21,13 +18,13 @@ and 64 bit file sizes. It is recommended to use
 <i>hArcData</i>
 <blockquote>
 This parameter should contain the archive handle obtained from
-<a href="RAROpenArchive.htm">RAROpenArchive</a> or
-<a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a> function call.
+<a href="RAROpenArchive.md">RAROpenArchive</a> or
+<a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a> function call.
 </blockquote>
 
 <i>HeaderData</i>
 <blockquote>
-Points to <a href="RARHeaderData.htm">RARHeaderData structure</a>.
+Points to <a href="RARHeaderDataEx.md">RARHeaderDataEx structure</a>.
 </blockquote>
 
 <h3>Return values</h3>
@@ -44,7 +41,7 @@ for encrypted file header</td></tr>
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RARHeaderData.htm">RARHeaderData</a> structure.
+  <a href="RARHeaderDataEx.md">RARHeaderDataEx</a> structure.
 </blockquote>
 
 </body>

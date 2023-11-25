@@ -30,7 +30,7 @@ struct RAROpenArchiveDataEx
 </pre>
 
 <h3>Description</h3>
-<p>This structure is used by <a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a>
+<p>This structure is used by <a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a>
 function.</p>
 
 <h3>Structure fields</h3>
@@ -169,7 +169,7 @@ function.</p>
 <li>
 <i>Callback</i>
 <blockquote>
-  <p>Address of <a href="RARCallback.htm">user defined callback function</a>
+  <p>Address of <a href="RARCallback.md">user defined callback function</a>
   to process UnRAR events.</p>
   <p>Set it to NULL if you do not want to define the callback function.
   Callback function is required to process multivolume and encrypted
@@ -180,7 +180,7 @@ function.</p>
 <i>UserData</i>
 <blockquote>
   <p>User defined value, which will be passed to 
-  <a href="RARCallback.htm">callback function.</a></p>
+  <a href="RARCallback.md">callback function.</a></p>
 </blockquote>
 
 <li>
@@ -218,8 +218,8 @@ function.</p>
 
 <h3>See also</h3>
 <blockquote>
-  <a href="RAROpenArchive.htm">RAROpenArchiveEx</a> function.<br>
-  <a href="RARCallback.htm">User defined callback function</a>
+  <a href="RAROpenArchive.md">RAROpenArchiveEx</a> function.<br>
+  <a href="RARCallback.md">User defined callback function</a>
 </blockquote>
 
 </body>

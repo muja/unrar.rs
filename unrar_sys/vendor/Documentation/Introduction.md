@@ -16,17 +16,17 @@ All samples except C sample (UnRDLL.c) are contributed by unrar.dll users.
 We at rarlab.com created and tested only UnRDLL.c sample.</p>
 
 <p>Brief scenario of unrar.dll use includes the call of 
-<a href="RAROpenArchiveEx.htm">RAROpenArchiveEx</a> to open an archive,
-<a href="RARReadHeaderEx.htm">RARReadHeaderEx</a> to read archive headers,
-<a href="RARProcessFileW.htm">RARProcessFileW</a> to process read header
-and <a href="RARCloseArchive.htm">RARCloseArchive</a> to close the archive
+<a href="RAROpenArchiveEx.md">RAROpenArchiveEx</a> to open an archive,
+<a href="RARReadHeaderEx.md">RARReadHeaderEx</a> to read archive headers,
+<a href="RARProcessFileW.md">RARProcessFileW</a> to process read header
+and <a href="RARCloseArchive.md">RARCloseArchive</a> to close the archive
 and free all previously allocated objects.<p>
 
 <p>If you use this library in Unix, you may need to call
 setlocale(LC_CTYPE, "") in your application, so Unicode conversion functions
 work properly.
 
-<p>Please read <a href="index.htm#functions">the functions description</a>
+<p>Please read <a href="index.md#functions">the functions description</a>
 and look into source code in "Examples" folder for more details.</p>
 
 
