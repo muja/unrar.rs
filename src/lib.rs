@@ -11,3 +11,4 @@ pub use open_archive::{
     CursorBeforeFile, CursorBeforeHeader, FileHeader, List, ListSplit, OpenArchive, Process,
     VolumeInfo,
 };
+pub use regex::Regex;
