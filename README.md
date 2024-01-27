@@ -150,6 +150,13 @@ are not easily feasible and as such not planned:
 - Processing archives from a file descriptor / fs::File handle
 - Processing archives from a byte stream
 
+# Unicode on Linux
+
+To have this library work with unicode character filenames on Linux, you must call the
+C `setlocale` function with either the empty string (if your default locale is set to UTF8)
+or a specific UTF8 locale, e.g. `setlocale(LC_ALL, "en_US.utf8")`.
+See #44 for more details.
+
 # Contributing
 
 Feel free to contribute! If you detect a bug, open an issue.
