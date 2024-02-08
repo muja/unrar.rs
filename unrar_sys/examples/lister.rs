@@ -1,4 +1,4 @@
-use libc::{c_int, c_long, c_uint};
+use libc::{c_int, c_uint};
 use std::str;
 use unrar_sys::*;
 
