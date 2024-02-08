@@ -387,6 +387,11 @@ impl OpenArchive<Process, CursorBeforeFile> {
         Ok(self.process_file_x::<ReadToVec>(None, None)?)
     }
 
+    /// Test the file without extracting it
+    pub fn test(self) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
+        Ok(self.process_file::<Test>(None, None)?)
+    }
+
     /// Extracts the file into the current working directory
     /// Returns the OpenArchive for further processing
     pub fn extract(self) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
@@ -448,6 +453,8 @@ struct Skip;
 struct ReadToVec;
 #[derive(Debug)]
 struct Extract;
+#[derive(Debug)]
+struct Test;
 
 trait ProcessMode: core::fmt::Debug {
     const OPERATION: private::Operation;
@@ -471,6 +478,12 @@ impl ProcessMode for ReadToVec {
 }
 impl ProcessMode for Extract {
     const OPERATION: private::Operation = private::Operation::Extract;
+    type Output = ();
+
+    fn process_data(_: &mut Self::Output, _: &[u8]) {}
+}
+impl ProcessMode for Test {
+    const OPERATION: private::Operation = private::Operation::Test;
     type Output = ();
 
     fn process_data(_: &mut Self::Output, _: &[u8]) {}
