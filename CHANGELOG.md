@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.3] - 2024-02-22
+
+### Documentation
+
+-  vendor: htm -> md (for viewing in browser)
+
+### Features
+
+-  *: add test mode
+
+### Miscellaneous Tasks
+
+-  unrar_sys: add Apache2 license to Cargo.toml
+
+### Styling
+
+-  docs: fix markdown
+
 ## [0.5.2] - 2023-11-11
 
 Release 0.5.2 fixes the build for Windows targets.
