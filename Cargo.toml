@@ -19,3 +19,6 @@ widestring = "1"
 [dependencies.unrar_sys]
 path = "unrar_sys"
 version = "0.3"
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+libc = "0.2.152"
