@@ -360,6 +360,6 @@ impl OpenArchiveDataEx {
 mod tests {
     #[test]
     fn test_version() {
-        assert_eq!(unsafe { super::RARGetDllVersion() }, 8);
+        assert_eq!(unsafe { super::RARGetDllVersion() }, 9);
     }
 }
