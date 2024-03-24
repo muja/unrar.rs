@@ -334,10 +334,10 @@ impl OpenArchiveData {
 }
 
 impl OpenArchiveDataEx {
-    pub fn new(archive: *const wchar_t, mode: c_uint) -> Self {
+    pub fn new(archive: *const c_char, mode: c_uint) -> Self {
         OpenArchiveDataEx {
-            archive_name: std::ptr::null(),
-            archive_name_w: archive,
+            archive_name: archive,
+            archive_name_w: std::ptr::null(),
             open_mode: mode,
             open_result: 0,
             comment_buffer: std::ptr::null_mut(),

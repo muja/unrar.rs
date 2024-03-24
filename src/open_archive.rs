@@ -233,10 +233,11 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
         password: Option<&[u8]>,
         recover: Option<&mut Option<Self>>,
     ) -> UnrarResult<Self> {
-        let filename = WideCString::from_os_str(&filename).unwrap();
+        let filename = CString::new(filename.to_str().unwrap()).unwrap();
 
         let mut data =
             native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::VALUE as u32);
+
         let handle =
             NonNull::new(unsafe { native::RAROpenArchiveEx(&mut data as *mut _) } as *mut _);
 
