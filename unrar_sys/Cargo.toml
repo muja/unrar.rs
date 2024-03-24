@@ -21,3 +21,6 @@ cc = "1"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["minwindef", "ntdef"] }
+
+[dev-dependencies]
+widestring = "1.0.2"
