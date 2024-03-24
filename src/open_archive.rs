@@ -233,6 +233,11 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
         password: Option<&[u8]>,
         recover: Option<&mut Option<Self>>,
     ) -> UnrarResult<Self> {
+        #[cfg(target_os = "linux")]
+        // on Linux there is an issue with unicode filenames when using wide strings
+        // so we use non-wide strings. See https://github.com/muja/unrar.rs/issues/44
+        let filename = CString::new(filename.as_os_str().as_encoded_bytes()).unwrap();
+        #[cfg(not(target_os = "linux"))]
         let filename = WideCString::from_os_str(&filename).unwrap();
 
         let mut data =
