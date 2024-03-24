@@ -120,7 +120,7 @@ impl<'a> Archive<'a> {
     /// assert_eq!(glob, None);
     /// ```
     pub fn all_parts_option(&self) -> Option<Glob> {
-        get_rar_extension(&self.filename)
+        get_rar_extension_ref(&self.filename)
             .and_then(|full_ext| {
                 multipart_extension().captures(&full_ext).map(|captures| {
                     let mut replacement = String::from(captures.get(1).unwrap().as_str());
@@ -199,26 +199,17 @@ impl<'a> Archive<'a> {
     /// assert_eq!(part42, None);
     /// ```
     pub fn nth_part(&self, n: i32) -> Option<PathBuf> {
-        get_rar_extension(&self.filename)
-            .and_then(|full_ext| {
-                multipart_extension().captures(&full_ext).map(|captures| {
-                    let mut replacement = String::from(captures.get(1).unwrap().as_str());
-                    // `n` padded with zeroes to the length of archive's number's length
-                    replacement.push_str(&format!(
-                        "{:01$}",
-                        n,
-                        captures.get(2).unwrap().as_str().len()
-                    ));
-                    replacement.push_str(captures.get(3).unwrap().as_str());
-                    full_ext.replace(captures.get(0).unwrap().as_str(), &replacement)
-                })
-            })
-            .and_then(|new_ext| {
-                self.filename.file_stem().map(|x| {
-                    self.filename
-                        .with_file_name(Path::new(x).with_extension(&new_ext[1..]))
-                })
-            })
+        let full_ext = get_rar_extension_ref(&self.filename)?;
+        let captures = multipart_extension().captures(&full_ext)?;
+        let mut replacement = String::from(captures.get(1)?.as_str());
+        // `n` padded with zeroes to the length of archive's number's length
+        replacement.push_str(&format!("{:01$}", n, captures.get(2)?.as_str().len()));
+        replacement.push_str(captures.get(3)?.as_str());
+        let new_ext = full_ext.replace(captures.get(0).unwrap().as_str(), &replacement);
+        self.filename.file_stem().map(|x| {
+            self.filename
+                .with_file_name(Path::new(x).with_extension(&new_ext[1..]))
+        })
     }
 
     /// Return the first part of the multipart collection or `None` if
@@ -405,7 +396,7 @@ impl<'a> Archive<'a> {
     /// Panics if `path` contains nul values.
     pub fn break_open<M: OpenMode>(
         self,
-        error: Option<&mut Option<UnrarError>>,
+        error: Option<&mut Option<RawError>>,
     ) -> UnrarResult<OpenArchive<M, CursorBeforeHeader>> {
         let mut recovered = None;
         self.open(Some(&mut recovered))
@@ -419,25 +410,51 @@ impl<'a> Archive<'a> {
     }
 }
 
-fn get_rar_extension<T: AsRef<Path>>(path: T) -> Option<String> {
-    path.as_ref().extension().and_then(|ext| {
-        let pre_ext = path
-            .as_ref()
-            .file_stem()
-            .and_then(|x| Path::new(x).extension());
-        Some(match pre_ext {
-            Some(pre_ext) => format!(".{}.{}", pre_ext.to_str()?, ext.to_str()?),
-            None => format!(".{}", ext.to_str()?),
-        })
+pub struct AllPartsIn<I> {
+    first_part: PathBuf,
+    inner: I,
+}
+
+impl<I> Iterator for AllPartsIn<I>
+where
+    I: Iterator,
+    <I as Iterator>::Item: AsRef<Path>,
+{
+    type Item = <I as Iterator>::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for e in &mut self.inner {
+            if Archive::new(&e).first_part() == self.first_part {
+                return Some(e);
+            }
+        }
+        None
+    }
+}
+
+/// will allocate if filename is non-UTF-8
+fn get_rar_extension_ref<T: AsRef<Path> + ?Sized>(path: &T) -> Option<Cow<'_, str>> {
+    let file = path.as_ref().file_name()?.to_string_lossy();
+    let mut dots = file.rmatch_indices('.');
+    let (mut i, _) = dots.next()?;
+    if let Some((dot, _)) = dots.next() {
+        i = dot;
+    }
+    Some(match file {
+        Cow::Borrowed(s) => Cow::Borrowed(&s[i..]),
+        Cow::Owned(mut s) => {
+            s.replace_range(0..i, "");
+            Cow::Owned(s)
+        }
     })
 }
 
 pub fn is_archive(s: &Path) -> bool {
-    get_rar_extension(s).is_some_and(|e| extension().is_match(&e))
+    get_rar_extension_ref(s).is_some_and(|e| extension().is_match(&e))
 }
 
 pub fn is_multipart(s: &Path) -> bool {
-    get_rar_extension(s).is_some_and(|e| multipart_extension().is_match(&e))
+    get_rar_extension_ref(s).is_some_and(|e| multipart_extension().is_match(&e))
 }
 
 #[cfg(test)]
