@@ -334,10 +334,20 @@ impl OpenArchiveData {
 }
 
 impl OpenArchiveDataEx {
-    pub fn new(archive: *const wchar_t, mode: c_uint) -> Self {
+    pub fn new(
+        #[cfg(target_os = "linux")] archive: *const c_char,
+        #[cfg(not(target_os = "linux"))] archive: *const wchar_t,
+        mode: c_uint,
+    ) -> Self {
+        #[cfg(target_os = "linux")]
+        let (archive_name, archive_name_w) = (archive, std::ptr::null());
+
+        #[cfg(not(target_os = "linux"))]
+        let (archive_name, archive_name_w) = (std::ptr::null(), archive);
+
         OpenArchiveDataEx {
-            archive_name: std::ptr::null(),
-            archive_name_w: archive,
+            archive_name,
+            archive_name_w,
             open_mode: mode,
             open_result: 0,
             comment_buffer: std::ptr::null_mut(),

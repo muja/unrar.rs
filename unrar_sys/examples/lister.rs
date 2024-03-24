@@ -39,12 +39,12 @@ fn main() {
             &mut next_path as *mut String as LPARAM,
         )
     };
-    let mut header = HeaderData::default();
+    let mut header = HeaderDataEx::default();
     let mut result = 0;
     let mut process_result;
     let mut first = true;
     while result == 0 {
-        result = unsafe { RARReadHeader(handle, &mut header as *mut _) };
+        result = unsafe { RARReadHeaderEx(handle, &mut header as *mut _) };
         if result != ERAR_SUCCESS {
             if result != ERAR_END_ARCHIVE {
                 writeln!(&mut stderr, "Error opening: {}", result).unwrap();
