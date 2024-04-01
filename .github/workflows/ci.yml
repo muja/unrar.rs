@@ -20,19 +20,18 @@ jobs:
           - name: Windows x86_64
             os: windows-2022
           # MacOS
+          - name: MacOS 14
+            os: macos-14
+          - name: MacOS 13 x86_64
+            os: macos-13
           - name: MacOS 12 x86_64
             os: macos-12
-          - name: MacOS 10.8
-            os: macos-11
           # Linux
           - name: Linux x86_64
             os: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v3
-    - name: OS X 10.8 deployment target
-      if: matrix.name == 'MacOS 10.8'
-      run: echo MACOSX_DEPLOYMENT_TARGET=10.8 >> $GITHUB_ENV
     - name: Build
       run: cargo build --verbose
     - name: Run tests
