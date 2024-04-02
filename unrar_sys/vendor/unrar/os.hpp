@@ -8,6 +8,10 @@
 #define SILENT
 #endif
 
+#if defined(__aarch64__) || defined(__arm__) || defined(_M_ARM64) || defined(_M_ARM64EC)
+#define __need_ptrdiff_t 1
+#endif
+
 #include <new>
 #include <string>
 #include <vector>
