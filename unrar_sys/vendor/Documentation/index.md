@@ -35,6 +35,11 @@
 <a href="RARHeaderDataEx.md">RARHeaderDataEx</a><br>
 </blockquote>
 
+<h3>Format</h3>
+<blockquote>
+<a href="RAR5Format.md">RAR5Format</a><br>
+</blockquote>
+
 </body>
 
 </html>
