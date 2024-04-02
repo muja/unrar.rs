@@ -20,6 +20,8 @@ jobs:
           - name: Windows x86_64
             os: windows-2022
           # MacOS
+          - name: MacOS 13 x86_64
+            os: macos-13
           - name: MacOS 12 x86_64
             os: macos-12
           - name: MacOS 10.12
