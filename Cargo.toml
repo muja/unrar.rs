@@ -15,6 +15,7 @@ repository = "https://github.com/muja/unrar.rs"
 regex = "1"
 bitflags = "1"
 widestring = "1"
+tempfile = "3.10.1"
 
 [dependencies.unrar_sys]
 path = "unrar_sys"

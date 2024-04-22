@@ -422,8 +422,12 @@ impl OpenArchive<Process, CursorBeforeFile> {
         self,
         dest: P,
     ) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
+        let wpath = match dest.as_ref().parent() {
+            Some(parent) => Some(WideCString::from_os_str(parent).expect("Unexpected nul in destination")),
+            None => None,
+        };
         let wdest = WideCString::from_os_str(dest.as_ref()).expect("Unexpected nul in destination");
-        self.process_file::<Extract>(None, Some(&wdest))
+        self.process_file::<Extract>(wpath.as_ref(), Some(&wdest))
     }
 }
 
