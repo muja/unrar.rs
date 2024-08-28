@@ -19,3 +19,6 @@ widestring = "1"
 [dependencies.unrar_sys]
 path = "unrar_sys"
 version = "0.3"
+
+[dev-dependencies]
+tempfile = "3.12.0"
