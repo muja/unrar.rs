@@ -20,9 +20,9 @@ body = """
   {% if commit.scope %}<em>({{ commit.scope }})</em> {% endif %}\
     {{ commit.message }} \
     (\
-    {{ commit.id | truncate(length=7, end='') }}\
-    {%- for ticket in commit.footers | filter(attribute='separator', value=' #') -%}
-        , #{{ ticket.value | replace(from=' ', to='') | split(pat=',') | join(sep=', ') }}\
+    <a href="<REPO>/commits/{{ commit.id }}">{{ commit.id | truncate(length=7, end='') }}</a>\
+    {%- for issue in commit.footers | filter(attribute='separator', value=' #') -%}
+        , <a href="<REPO>/issues/{{ issue.value }}">#{{ issue.value }}</a>\
     {%- endfor -%}
     )\
 
@@ -46,8 +46,8 @@ body = """
 
 {% set issues = [] %}
 {%- for commit in commits -%}
-    {%- for ticket in commit.footers | filter(attribute='separator', value=' #') -%}
-        {% set_global issues = issues | concat(with = ticket.value | replace(from=' ', to='') | split(pat=',')) %}
+    {%- for issue in commit.footers | filter(attribute='separator', value=' #') -%}
+        {% set_global issues = issues | concat(with = '[#'~issue.value~'](<REPO>/issues/'~issue.value~')') %}
     {%- endfor -%}
 {%- endfor -%}
 
@@ -55,7 +55,7 @@ body = """
 {% if message %}
 {{ message }}
 {% endif %}
-{% if issues | length > 0 %}Issues: #{{ issues | sort | unique | join(sep=', #') }}{% raw %}\n {% endraw%}{% endif %}
+{% if issues | length > 0 %}Issues: {{ issues | sort | unique | join(sep=', ') }}{% raw %}\n {% endraw%}{% endif %}
 {%- for group, commits in commits | group_by(attribute='group') %}
     ### {{ group }}
     {% for commit in commits
@@ -73,6 +73,10 @@ body = """
 
 # remove the leading and trailing whitespace from the template
 trim = true
+
+postprocessors = [
+  { pattern = '<REPO>', replace = 'https://github.com/muja/unrar.rs' }
+]
 
 [git]
 # parse the commits based on https://www.conventionalcommits.org
