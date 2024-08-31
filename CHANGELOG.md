@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2024-08-31
+
+Re-release because 0.5.4 had a dependency mistake
+
+
+### <!--1-->Bug Fixes
+
+- correctly update unrar_sys version (2ad4b71)
+
+
 ## [0.5.4] - 2024-08-31
 
 This release fixes the long standing unicode filename bug on Linux, as well as as the recent tempdir bug on macOS.
