@@ -6,6 +6,29 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2024-09-01
+
+This release fixes a reported Windows build error for different locales
+
+Issues: [#56](https://github.com/muja/unrar.rs/issues/56)
+
+### <!--1-->Bug Fixes
+
+- <details>
+  <summary><em>(dll)</em> remove invalid unicode in code comment (<a href="https://github.com/muja/unrar.rs/commits/7db15f7346050feae8aaa574d172fac33c52bbf1">7db15f7</a>, <a href="https://github.com/muja/unrar.rs/issues/56">#56</a>)</summary>
+  <blockquote>
+
+  msvc compliler (under some windows system) complains about "undefined identifier Flags" due to invalid chars,<br>
+  for example, compile may fail under Windows 11 system which has locale for non-unicode app configured as Japanese or Korean or Chinese
+  </blockquote>
+  </details>
+
+### <!--4-->Miscellaneous / Refactors
+
+- <em>(dll)</em> add patch for unicode removal (<a href="https://github.com/muja/unrar.rs/commits/be073b48c0c1dfea0e072875f634ce77e3100d84">be073b4</a>)
+- <em>(release)</em> link to issues and commits in changelog (<a href="https://github.com/muja/unrar.rs/commits/e9c3101e412a472783c4f44ac4defcf98a0b35b3">e9c3101</a>)
+
+
 ## [0.5.5] - 2024-08-31
 
 Re-release because 0.5.4 had a dependency mistake
