@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use unrar::error::{Code, When};
 use unrar::Archive;
 
 #[test]
@@ -22,8 +21,7 @@ fn no_password() {
     let read_result = header.unwrap().unwrap().read();
     assert!(matches!(read_result, Err(_)));
     let err = read_result.unwrap_err();
-    assert_eq!(err.code, Code::MissingPassword);
-    assert_eq!(err.when, When::Process);
+    assert_eq!(err, unrar::ProcessError::MissingPassword);
 }
 
 #[test]
@@ -59,8 +57,7 @@ fn no_password_list_encrypted_headers() {
         .open_for_listing()
         .unwrap();
     let err = entries.next().unwrap().unwrap_err();
-    assert_eq!(err.code, Code::MissingPassword);
-    assert_eq!(err.when, When::Read);
+    assert_eq!(err, unrar::IterateError::Header(unrar::HeaderError::MissingPassword));
 }
 
 #[test]

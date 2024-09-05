@@ -1,11 +1,12 @@
+use super::Nulable;
 use std::ffi::{CString, CStr};
 use std::path::{Path, PathBuf};
 
 pub(crate) type RarString = CString;
 pub(crate) type RarStr = CStr;
 
-pub(crate) fn construct<P: AsRef<std::path::Path>>(path: P) -> RarString {
-    CString::new(path.as_ref().as_os_str().as_encoded_bytes()).unwrap()
+pub(crate) fn construct<E: crate::RarError>(path: &Path) -> Result<RarString, Nulable<E>> {
+    CString::new(path.as_os_str().as_encoded_bytes()).map_err(Nulable::from)
 }
 
 pub(crate) fn process_file(
@@ -13,7 +14,7 @@ pub(crate) fn process_file(
     operation: i32,
     dest_path: Option<&RarStr>,
     dest_name: Option<&RarStr>,
-) -> i32 {
+) -> u32 {
     unsafe {
         unrar_sys::RARProcessFile(
             handle,
@@ -24,9 +25,9 @@ pub(crate) fn process_file(
     }
 }
 
-pub(crate) fn preprocess_extract(
+pub(crate) fn preprocess_extract<E: crate::RarError>(
     base: Option<&Path>,
     filename: &PathBuf,
-) -> (Option<RarString>, Option<RarString>) {
-    (None, Some(construct(base.unwrap_or(".".as_ref()).join(filename))))
+) -> Result<(Option<RarString>, Option<RarString>), Nulable<E>> {
+    construct(&base.unwrap_or(".".as_ref()).join(filename)).map(|e| (None, Some(e)))
 }
