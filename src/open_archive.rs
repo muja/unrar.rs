@@ -295,57 +295,38 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
     }
 }
 
-impl Iterator for OpenArchive<List, CursorBeforeHeader> {
-    type Item = Result<FileHeader, UnrarError>;
+macro_rules! iterator_impl {
+    ($x: ident) => {
+        impl Iterator for OpenArchive<$x, CursorBeforeHeader> {
+            type Item = Result<FileHeader, UnrarError>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.damaged {
-            return None;
-        }
-        match read_header(&self.handle) {
-            Ok(Some(header)) => {
-                match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
-                    Ok(_) => Some(Ok(header)),
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.damaged {
+                    return None;
+                }
+                match read_header(&self.handle) {
+                    Ok(Some(header)) => {
+                        match Internal::<Skip>::process_file_raw(&self.handle, None, None)
+                        {
+                            Ok(_) => Some(Ok(header)),
+                            Err(s) => {
+                                self.damaged = true;
+                                Some(Err(s))
+                            }
+                        }
+                    }
+                    Ok(None) => None,
                     Err(s) => {
                         self.damaged = true;
                         Some(Err(s))
                     }
                 }
             }
-            Ok(None) => None,
-            Err(s) => {
-                self.damaged = true;
-                Some(Err(s))
-            }
         }
-    }
+    };
 }
-
-impl Iterator for OpenArchive<ListSplit, CursorBeforeHeader> {
-    type Item = Result<FileHeader, UnrarError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.damaged {
-            return None;
-        }
-        match read_header(&self.handle) {
-            Ok(Some(header)) => {
-                match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
-                    Ok(_) => Some(Ok(header)),
-                    Err(s) => {
-                        self.damaged = true;
-                        Some(Err(s))
-                    }
-                }
-            }
-            Ok(None) => None,
-            Err(s) => {
-                self.damaged = true;
-                Some(Err(s))
-            }
-        }
-    }
-}
+iterator_impl!(List);
+iterator_impl!(ListSplit);
 
 impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
     /// returns the file header for the file that follows which is to be processed next.
