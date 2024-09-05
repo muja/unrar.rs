@@ -49,22 +49,22 @@ pub type WCHAR = wchar_t;
 
 // ----------------- CONSTANTS ----------------- //
 
-pub const ERAR_SUCCESS: c_int = 0;
-pub const ERAR_END_ARCHIVE: c_int = 10;
-pub const ERAR_NO_MEMORY: c_int = 11;
-pub const ERAR_BAD_DATA: c_int = 12;
-pub const ERAR_BAD_ARCHIVE: c_int = 13;
-pub const ERAR_UNKNOWN_FORMAT: c_int = 14;
-pub const ERAR_EOPEN: c_int = 15;
-pub const ERAR_ECREATE: c_int = 16;
-pub const ERAR_ECLOSE: c_int = 17;
-pub const ERAR_EREAD: c_int = 18;
-pub const ERAR_EWRITE: c_int = 19;
-pub const ERAR_SMALL_BUF: c_int = 20;
-pub const ERAR_UNKNOWN: c_int = 21;
-pub const ERAR_MISSING_PASSWORD: c_int = 22;
-pub const ERAR_EREFERENCE: c_int = 23;
-pub const ERAR_BAD_PASSWORD: c_int = 24;
+pub const ERAR_SUCCESS: c_uint = 0;
+pub const ERAR_END_ARCHIVE: c_uint = 10;
+pub const ERAR_NO_MEMORY: c_uint = 11;
+pub const ERAR_BAD_DATA: c_uint = 12;
+pub const ERAR_BAD_ARCHIVE: c_uint = 13;
+pub const ERAR_UNKNOWN_FORMAT: c_uint = 14;
+pub const ERAR_EOPEN: c_uint = 15;
+pub const ERAR_ECREATE: c_uint = 16;
+pub const ERAR_ECLOSE: c_uint = 17;
+pub const ERAR_EREAD: c_uint = 18;
+pub const ERAR_EWRITE: c_uint = 19;
+pub const ERAR_SMALL_BUF: c_uint = 20;
+pub const ERAR_UNKNOWN: c_uint = 21;
+pub const ERAR_MISSING_PASSWORD: c_uint = 22;
+pub const ERAR_EREFERENCE: c_uint = 23;
+pub const ERAR_BAD_PASSWORD: c_uint = 24;
 
 pub const RAR_OM_LIST: c_uint = 0;
 pub const RAR_OM_EXTRACT: c_uint = 1;
@@ -214,25 +214,25 @@ extern "C" {
 
     pub fn RAROpenArchiveEx(data: *const OpenArchiveDataEx) -> *const Handle;
 
-    pub fn RARCloseArchive(handle: *const Handle) -> c_int;
+    pub fn RARCloseArchive(handle: *const Handle) -> c_uint;
 
-    pub fn RARReadHeader(handle: *const Handle, header_data: *const HeaderData) -> c_int;
+    pub fn RARReadHeader(handle: *const Handle, header_data: *const HeaderData) -> c_uint;
 
-    pub fn RARReadHeaderEx(handle: *const Handle, header_data: *const HeaderDataEx) -> c_int;
+    pub fn RARReadHeaderEx(handle: *const Handle, header_data: *const HeaderDataEx) -> c_uint;
 
     pub fn RARProcessFile(
         handle: *const Handle,
         operation: c_int,
         dest_path: *const c_char,
         dest_name: *const c_char,
-    ) -> c_int;
+    ) -> c_uint;
 
     pub fn RARProcessFileW(
         handle: *const Handle,
         operation: c_int,
         dest_path: *const wchar_t,
         dest_name: *const wchar_t,
-    ) -> c_int;
+    ) -> c_uint;
 
     pub fn RARSetCallback(handle: *const Handle, callback: Option<Callback>, user_data: LPARAM);
 
@@ -242,7 +242,7 @@ extern "C" {
 
     pub fn RARSetPassword(handle: *const Handle, password: *const c_char);
 
-    pub fn RARGetDllVersion() -> c_int;
+    pub fn RARGetDllVersion() -> c_uint;
 }
 
 // ----------------- MINIMAL ABSTRACTIONS ----------------- //

@@ -1,11 +1,11 @@
 use super::error::*;
-use super::*;
 use std::ffi::CString;
 use std::fmt;
 use std::os::raw::{c_int, c_uint};
 use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 use widestring::WideCString;
+use unrar_sys as native;
 
 bitflags::bitflags! {
     #[derive(Default)]
@@ -203,8 +203,8 @@ impl<Mode: OpenMode, C: Cursor> OpenArchive<Mode, C> {
     /// # Example how you *might* use this
     ///
     /// ```no_run
-    /// use unrar::{Archive, error::{When, Code}};
-    /// 
+    /// use unrar::{Archive, error::RarError};
+    ///
     /// let mut archive = Archive::new("corrupt.rar").open_for_listing().expect("archive error");
     /// loop {
     ///     let mut error = None;
@@ -216,7 +216,7 @@ impl<Mode: OpenMode, C: Cursor> OpenArchive<Mode, C> {
     ///     }
     ///     match error {
     ///         // your special recoverable error, please submit a PR with reproducible archive
-    ///         Some(e) if (e.when, e.code) == (When::Process, Code::BadData) => archive.force_heal(),
+    ///         Some(RarError::Unknown) => archive.force_heal(),
     ///         Some(e) => panic!("irrecoverable error: {e}"),
     ///         None => break,
     ///     }
@@ -232,24 +232,27 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
         filename: &Path,
         password: Option<&[u8]>,
         recover: Option<&mut Option<Self>>,
-    ) -> UnrarResult<Self> {
+    ) -> Result<Self> {
         #[cfg(target_os = "linux")]
         // on Linux there is an issue with unicode filenames when using wide strings
         // so we use non-wide strings. See https://github.com/muja/unrar.rs/issues/44
-        let filename = CString::new(filename.as_os_str().as_encoded_bytes()).unwrap();
+        let filename = CString::new(filename.as_os_str().as_encoded_bytes())?;
         #[cfg(not(target_os = "linux"))]
-        let filename = WideCString::from_os_str(&filename).unwrap();
+        let filename = WideCString::from_os_str(&filename)?;
 
         let mut data =
             native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::VALUE as u32);
         let handle =
             NonNull::new(unsafe { native::RAROpenArchiveEx(&mut data as *mut _) } as *mut _);
 
-        let arc = handle.and_then(|handle| {
+        if let Some(handle) = handle {
             if let Some(pw) = password {
-                let cpw = CString::new(pw).unwrap();
+                let cpw = CString::new(pw)?;
                 unsafe { native::RARSetPassword(handle.as_ptr(), cpw.as_ptr() as *const _) }
             }
+        }
+
+        let arc = handle.and_then(|handle| {
             Some(OpenArchive {
                 handle: Handle(handle),
                 damaged: false,
@@ -258,13 +261,12 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
                 marker: std::marker::PhantomData,
             })
         });
-        let result = Code::from(data.open_result as i32).unwrap();
 
-        match (arc, result) {
-            (Some(arc), Code::Success) => Ok(arc),
-            (arc, _) => {
+        match (arc, data.open_result) {
+            (Some(arc), native::ERAR_SUCCESS) => Ok(arc),
+            (arc, code) => {
                 recover.and_then(|recover| arc.and_then(|arc| recover.replace(arc)));
-                Err(UnrarError::from(result, When::Open))
+                Err(rar::Error::at_open(code).unwrap().into())
             }
         }
     }
@@ -284,7 +286,7 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
     /// let archive = archive.unwrap().unwrap();
     /// assert_eq!(archive.entry().filename.as_os_str(), "VERSION");
     /// ```
-    pub fn read_header(self) -> UnrarResult<Option<OpenArchive<Mode, CursorBeforeFile>>> {
+    pub fn read_header(self) -> rar::Result<Option<OpenArchive<Mode, CursorBeforeFile>>> {
         Ok(read_header(&self.handle)?.map(|entry| OpenArchive {
             extra: CursorBeforeFile { header: entry },
             damaged: self.damaged,
@@ -295,57 +297,38 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
     }
 }
 
-impl Iterator for OpenArchive<List, CursorBeforeHeader> {
-    type Item = Result<FileHeader, UnrarError>;
+macro_rules! iterator_impl {
+    ($x: ident) => {
+        impl Iterator for OpenArchive<$x, CursorBeforeHeader> {
+            type Item = Result<FileHeader, rar::Error>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.damaged {
-            return None;
-        }
-        match read_header(&self.handle) {
-            Ok(Some(header)) => {
-                match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
-                    Ok(_) => Some(Ok(header)),
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.damaged {
+                    return None;
+                }
+                match read_header(&self.handle) {
+                    Ok(Some(header)) => {
+                        match Internal::<Skip>::process_file_raw(&self.handle, None, None)
+                        {
+                            Ok(_) => Some(Ok(header)),
+                            Err(s) => {
+                                self.damaged = true;
+                                Some(Err(s))
+                            }
+                        }
+                    }
+                    Ok(None) => None,
                     Err(s) => {
                         self.damaged = true;
                         Some(Err(s))
                     }
                 }
             }
-            Ok(None) => None,
-            Err(s) => {
-                self.damaged = true;
-                Some(Err(s))
-            }
         }
-    }
+    };
 }
-
-impl Iterator for OpenArchive<ListSplit, CursorBeforeHeader> {
-    type Item = Result<FileHeader, UnrarError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.damaged {
-            return None;
-        }
-        match read_header(&self.handle) {
-            Ok(Some(header)) => {
-                match Internal::<Skip>::process_file_raw(&self.handle, None, None) {
-                    Ok(_) => Some(Ok(header)),
-                    Err(s) => {
-                        self.damaged = true;
-                        Some(Err(s))
-                    }
-                }
-            }
-            Ok(None) => None,
-            Err(s) => {
-                self.damaged = true;
-                Some(Err(s))
-            }
-        }
-    }
-}
+iterator_impl!(List);
+iterator_impl!(ListSplit);
 
 impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
     /// returns the file header for the file that follows which is to be processed next.
@@ -354,7 +337,7 @@ impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
     }
 
     /// skips over the next file, not doing anything with it.
-    pub fn skip(self) -> UnrarResult<OpenArchive<M, CursorBeforeHeader>> {
+    pub fn skip(self) -> rar::Result<OpenArchive<M, CursorBeforeHeader>> {
         self.process_file::<Skip>(None, None)
     }
 
@@ -362,7 +345,7 @@ impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
         self,
         path: Option<&WideCString>,
         file: Option<&WideCString>,
-    ) -> UnrarResult<OpenArchive<M, CursorBeforeHeader>> {
+    ) -> rar::Result<OpenArchive<M, CursorBeforeHeader>> {
         Ok(self.process_file_x::<PM>(path, file)?.1)
     }
 
@@ -370,7 +353,7 @@ impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
         self,
         path: Option<&WideCString>,
         file: Option<&WideCString>,
-    ) -> UnrarResult<(PM::Output, OpenArchive<M, CursorBeforeHeader>)> {
+    ) -> rar::Result<(PM::Output, OpenArchive<M, CursorBeforeHeader>)> {
         let result = Ok((
             Internal::<PM>::process_file_raw(&self.handle, path, file)?,
             OpenArchive {
@@ -388,51 +371,56 @@ impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
 impl OpenArchive<Process, CursorBeforeFile> {
     /// Reads the underlying file into a `Vec<u8>`
     /// Returns the data as well as the owned Archive that can be processed further.
-    pub fn read(self) -> UnrarResult<(Vec<u8>, OpenArchive<Process, CursorBeforeHeader>)> {
+    pub fn read(self) -> rar::Result<(Vec<u8>, OpenArchive<Process, CursorBeforeHeader>)> {
         Ok(self.process_file_x::<ReadToVec>(None, None)?)
     }
 
     /// Test the file without extracting it
-    pub fn test(self) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
+    pub fn test(self) -> rar::Result<OpenArchive<Process, CursorBeforeHeader>> {
         Ok(self.process_file::<Test>(None, None)?)
     }
 
     /// Extracts the file into the current working directory
+    /// 
     /// Returns the OpenArchive for further processing
-    pub fn extract(self) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
+    pub fn extract(self) -> rar::Result<OpenArchive<Process, CursorBeforeHeader>> {
         self.process_file::<Extract>(None, None)
     }
 
     /// Extracts the file into the specified directory.  
     /// Returns the OpenArchive for further processing
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// This function will panic if `base` contains nul characters.
+    /// - `NulError` if `base` contains nul characters.
+    /// - `RarError` if there was an error during extraction.
     pub fn extract_with_base<P: AsRef<Path>>(
         self,
         base: P,
-    ) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
-        let wdest = WideCString::from_os_str(base.as_ref()).expect("Unexpected nul in destination");
+    ) -> Result<OpenArchive<Process, CursorBeforeHeader>> {
+        let wdest = WideCString::from_os_str(base.as_ref())?;
         self.process_file::<Extract>(Some(&wdest), None)
+            .map_err(Error::RarError)
     }
 
     /// Extracts the file into the specified file.
     /// Returns the OpenArchive for further processing
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// This function will panic if `dest` contains nul characters.
+    /// - `NulError` if `base` contains nul characters.
+    /// - `RarError` if there was an error during extraction.
     pub fn extract_to<P: AsRef<Path>>(
         self,
         dest: P,
-    ) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
-        let wdest = WideCString::from_os_str(dest.as_ref()).expect("Unexpected nul in destination");
+    ) -> Result<OpenArchive<Process, CursorBeforeHeader>> {
+        let wdest = WideCString::from_os_str(dest.as_ref())?;
         self.process_file::<Extract>(None, Some(&wdest))
+            .map_err(Error::RarError)
     }
 }
 
-fn read_header(handle: &Handle) -> UnrarResult<Option<FileHeader>> {
+fn read_header(handle: &Handle) -> rar::Result<Option<FileHeader>> {
     let mut userdata: Userdata<<Skip as ProcessMode>::Output> = Default::default();
     unsafe {
         native::RARSetCallback(
@@ -441,14 +429,13 @@ fn read_header(handle: &Handle) -> UnrarResult<Option<FileHeader>> {
             &mut userdata as *mut _ as native::LPARAM,
         );
     }
+
     let mut header = native::HeaderDataEx::default();
-    let read_result =
-        Code::from(unsafe { native::RARReadHeaderEx(handle.0.as_ptr(), &mut header as *mut _) })
-            .unwrap();
+    let read_result = unsafe { native::RARReadHeaderEx(handle.0.as_ptr(), &mut header as *mut _) };
     match read_result {
-        Code::Success => Ok(Some(header.into())),
-        Code::EndArchive => Ok(None),
-        _ => Err(UnrarError::from(read_result, When::Read)),
+        native::ERAR_SUCCESS => Ok(Some(header.into())),
+        native::ERAR_END_ARCHIVE => Ok(None),
+        code => Err(rar::Error::at_header(code).unwrap()),
     }
 }
 
@@ -494,9 +481,7 @@ impl ProcessMode for Test {
     fn process_data(_: &mut Self::Output, _: &[u8]) {}
 }
 
-struct Internal<M: ProcessMode> {
-    marker: std::marker::PhantomData<M>,
-}
+struct Internal<M: ProcessMode>(std::marker::PhantomData<M>);
 
 impl<M: ProcessMode> Internal<M> {
     extern "C" fn callback(
@@ -535,7 +520,7 @@ impl<M: ProcessMode> Internal<M> {
         handle: &Handle,
         path: Option<&WideCString>,
         file: Option<&WideCString>,
-    ) -> UnrarResult<M::Output> {
+    ) -> rar::Result<M::Output> {
         let mut user_data: Userdata<M::Output> = Default::default();
         unsafe {
             native::RARSetCallback(
@@ -544,7 +529,7 @@ impl<M: ProcessMode> Internal<M> {
                 &mut user_data as *mut _ as native::LPARAM,
             );
         }
-        let process_result = Code::from(unsafe {
+        let process_result = unsafe {
             native::RARProcessFileW(
                 handle.0.as_ptr(),
                 M::OPERATION as i32,
@@ -553,11 +538,10 @@ impl<M: ProcessMode> Internal<M> {
                 file.map(|file| file.as_ptr() as *const _)
                     .unwrap_or(std::ptr::null()),
             )
-        })
-        .unwrap();
+        };
         match process_result {
-            Code::Success => Ok(user_data.0),
-            _ => Err(UnrarError::from(process_result, When::Process)),
+            native::ERAR_SUCCESS => Ok(user_data.0),
+            code => Err(rar::Error::at_process(code).unwrap()),
         }
     }
 }
@@ -578,7 +562,7 @@ bitflags::bitflags! {
 /// Created using the read_header methods in an OpenArchive, contains
 /// information for the file that follows which is to be processed next.
 #[allow(missing_docs)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileHeader {
     pub filename: PathBuf,
     flags: EntryFlags,

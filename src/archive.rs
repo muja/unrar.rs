@@ -323,10 +323,12 @@ impl<'a> Archive<'a> {
     ///
     /// See also: [`Process`]
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `self.filename` contains nul values.
-    pub fn open_for_processing(self) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
+    /// - `NulError` if `self.filename` or `self.password` contains nul values.
+    /// - `RarError` if there was an error opening/reading/decoding the archive.
+    ///
+    pub fn open_for_processing(self) -> Result<OpenArchive<Process, CursorBeforeHeader>> {
         self.open(None)
     }
 
@@ -334,10 +336,12 @@ impl<'a> Archive<'a> {
     ///
     /// See also: [`List`]
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `self.filename` contains nul values.
-    pub fn open_for_listing(self) -> UnrarResult<OpenArchive<List, CursorBeforeHeader>> {
+    /// - `NulError` if `self.filename` or `self.password` contains nul values.
+    /// - `RarError` if there was an error opening/reading/decoding the archive.
+    ///
+    pub fn open_for_listing(self) -> Result<OpenArchive<List, CursorBeforeHeader>> {
         self.open(None)
     }
 
@@ -348,23 +352,20 @@ impl<'a> Archive<'a> {
     ///
     /// See also: [`ListSplit`]
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `self.filename` contains nul values.
-
-    pub fn open_for_listing_split(self) -> UnrarResult<OpenArchive<ListSplit, CursorBeforeHeader>> {
+    /// - `NulError` if `self.filename` or `self.password` contains nul values.
+    /// - `RarError` if there was an error opening/reading/decoding the archive.
+    ///
+    pub fn open_for_listing_split(self) -> Result<OpenArchive<ListSplit, CursorBeforeHeader>> {
         self.open(None)
     }
 
     /// Opens the underlying archive with the provided parameters.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `path` contains nul values.
     fn open<M: OpenMode>(
         self,
         recover: Option<&mut Option<OpenArchive<M, CursorBeforeHeader>>>,
-    ) -> UnrarResult<OpenArchive<M, CursorBeforeHeader>> {
+    ) -> Result<OpenArchive<M, CursorBeforeHeader>> {
         OpenArchive::new(&self.filename, self.password, recover)
     }
 
@@ -378,8 +379,8 @@ impl<'a> Archive<'a> {
     /// # Example: I don't care if there was a recoverable error
     ///
     /// ```no_run
-    /// # use unrar::{Archive, List, UnrarResult};
-    /// # fn x() -> UnrarResult<()> {
+    /// # use unrar::{Archive, List, Result};
+    /// # fn x() -> Result<()> {
     /// let mut open_archive = Archive::new("file").break_open::<List>(None)?;
     /// // use open_archive
     /// # Ok(())
@@ -389,8 +390,8 @@ impl<'a> Archive<'a> {
     /// # Example: I want to know if there was a recoverable error
     ///
     /// ```no_run
-    /// # use unrar::{Archive, List, UnrarResult};
-    /// # fn x() -> UnrarResult<()> {
+    /// # use unrar::{Archive, List, Result};
+    /// # fn x() -> Result<()> {
     /// let mut possible_error = None;
     /// let mut open_archive = Archive::new("file").break_open::<List>(Some(&mut possible_error))?;
     /// // check the error, e.g.:
@@ -400,21 +401,23 @@ impl<'a> Archive<'a> {
     /// # }
     /// ```
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `path` contains nul values.
+    /// - `NulError` if `self.filename` or `self.password` contains nul values.
+    /// - `RarError` if there was an error opening/reading/decoding the archive.
+    ///
     pub fn break_open<M: OpenMode>(
         self,
-        error: Option<&mut Option<UnrarError>>,
-    ) -> UnrarResult<OpenArchive<M, CursorBeforeHeader>> {
+        error: Option<&mut Option<rar::Error>>,
+    ) -> Result<OpenArchive<M, CursorBeforeHeader>> {
         let mut recovered = None;
         self.open(Some(&mut recovered))
-            .or_else(|x| match recovered {
-                Some(archive) => {
-                    error.map(|error| *error = Some(x));
+            .or_else(|e| match (recovered, e) {
+                (Some(archive), Error::RarError(e)) => {
+                    error.map(|error| *error = Some(e));
                     Ok(archive)
                 }
-                None => Err(x),
+                (_, _) => Err(e),
             })
     }
 }

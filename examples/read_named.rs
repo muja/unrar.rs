@@ -1,4 +1,4 @@
-use unrar::{Archive, UnrarResult};
+use unrar::{Archive, Result as UnrarResult};
 
 fn main() -> UnrarResult<()> {
     // Basic args parsing
