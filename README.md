@@ -100,15 +100,14 @@ For more sophisticated examples, please look inside the `examples/` folder.
 Here's what a function that returns the first content of a file could look like:
 
 ```rust
-fn first_file_content<P: AsRef<Path>>(path: P) -> UnrarResult<Vec<u8>> {
-    let archive = Archive::new(&path).open_for_processing()?; // cursor: before header
+fn first_file_content<P: AsRef<Path>>(path: P) -> Result<Vec<u8>, unrar::Error> {
+    let archive = unrar::Archive::new(&path).open_for_processing()?; // cursor: before header
     let archive = archive.read_header()?.expect("empty archive"); // cursor: before file
     dbg!(&archive.entry().filename);
     let (data, _rest) = archive.read()?; // cursor: before header
     Ok(data)
 }
 # use std::path::Path;
-# use unrar::{Archive, UnrarResult};
 #
 # let data = first_file_content("data/version.rar").unwrap();
 # assert_eq!(std::str::from_utf8(&data), Ok("unrar-0.4.0"));
