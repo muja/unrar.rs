@@ -1,11 +1,9 @@
 use super::error::*;
 use super::*;
-use std::ffi::CString;
 use std::fmt;
 use std::os::raw::{c_int, c_uint};
 use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
-use widestring::WideCString;
 
 bitflags::bitflags! {
     #[derive(Default)]
@@ -53,7 +51,7 @@ pub struct OpenArchive<M: OpenMode, C: Cursor> {
     extra: C,
     marker: std::marker::PhantomData<M>,
 }
-type Userdata<T> = (T, Option<WideCString>);
+type Userdata<T> = (T, Option<widestring::WideCString>);
 
 mod private {
     use super::native;
@@ -204,7 +202,7 @@ impl<Mode: OpenMode, C: Cursor> OpenArchive<Mode, C> {
     ///
     /// ```no_run
     /// use unrar::{Archive, error::{When, Code}};
-    /// 
+    ///
     /// let mut archive = Archive::new("corrupt.rar").open_for_listing().expect("archive error");
     /// loop {
     ///     let mut error = None;
@@ -233,12 +231,7 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
         password: Option<&[u8]>,
         recover: Option<&mut Option<Self>>,
     ) -> UnrarResult<Self> {
-        #[cfg(target_os = "linux")]
-        // on Linux there is an issue with unicode filenames when using wide strings
-        // so we use non-wide strings. See https://github.com/muja/unrar.rs/issues/44
-        let filename = CString::new(filename.as_os_str().as_encoded_bytes()).unwrap();
-        #[cfg(not(target_os = "linux"))]
-        let filename = WideCString::from_os_str(&filename).unwrap();
+        let filename = pathed::construct(filename);
 
         let mut data =
             native::OpenArchiveDataEx::new(filename.as_ptr() as *const _, Mode::VALUE as u32);
@@ -247,7 +240,7 @@ impl<Mode: OpenMode> OpenArchive<Mode, CursorBeforeHeader> {
 
         let arc = handle.and_then(|handle| {
             if let Some(pw) = password {
-                let cpw = CString::new(pw).unwrap();
+                let cpw = std::ffi::CString::new(pw).unwrap();
                 unsafe { native::RARSetPassword(handle.as_ptr(), cpw.as_ptr() as *const _) }
             }
             Some(OpenArchive {
@@ -360,16 +353,16 @@ impl<M: OpenMode> OpenArchive<M, CursorBeforeFile> {
 
     fn process_file<PM: ProcessMode>(
         self,
-        path: Option<&WideCString>,
-        file: Option<&WideCString>,
+        path: Option<&pathed::RarStr>,
+        file: Option<&pathed::RarStr>,
     ) -> UnrarResult<OpenArchive<M, CursorBeforeHeader>> {
         Ok(self.process_file_x::<PM>(path, file)?.1)
     }
 
     fn process_file_x<PM: ProcessMode>(
         self,
-        path: Option<&WideCString>,
-        file: Option<&WideCString>,
+        path: Option<&pathed::RarStr>,
+        file: Option<&pathed::RarStr>,
     ) -> UnrarResult<(PM::Output, OpenArchive<M, CursorBeforeHeader>)> {
         let result = Ok((
             Internal::<PM>::process_file_raw(&self.handle, path, file)?,
@@ -400,7 +393,7 @@ impl OpenArchive<Process, CursorBeforeFile> {
     /// Extracts the file into the current working directory
     /// Returns the OpenArchive for further processing
     pub fn extract(self) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
-        self.process_file::<Extract>(None, None)
+        self.dir_extract(None)
     }
 
     /// Extracts the file into the specified directory.  
@@ -413,8 +406,7 @@ impl OpenArchive<Process, CursorBeforeFile> {
         self,
         base: P,
     ) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
-        let wdest = WideCString::from_os_str(base.as_ref()).expect("Unexpected nul in destination");
-        self.process_file::<Extract>(Some(&wdest), None)
+        self.dir_extract(Some(base.as_ref()))
     }
 
     /// Extracts the file into the specified file.
@@ -425,10 +417,20 @@ impl OpenArchive<Process, CursorBeforeFile> {
     /// This function will panic if `dest` contains nul characters.
     pub fn extract_to<P: AsRef<Path>>(
         self,
-        dest: P,
+        file: P,
     ) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
-        let wdest = WideCString::from_os_str(dest.as_ref()).expect("Unexpected nul in destination");
-        self.process_file::<Extract>(None, Some(&wdest))
+        let dest = pathed::construct(file.as_ref());
+        self.process_file::<Extract>(None, Some(&dest))
+    }
+
+    /// extracting into a directory if the filename has unicode characters
+    /// does not work on Linux, so we must specify the full path for Linux
+    fn dir_extract(
+        self,
+        base: Option<&Path>,
+    ) -> UnrarResult<OpenArchive<Process, CursorBeforeHeader>> {
+        let (path, file) = pathed::preprocess_extract(base, &self.entry().filename);
+        self.process_file::<Extract>(path.as_deref(), file.as_deref())
     }
 }
 
@@ -513,7 +515,8 @@ impl<M: ProcessMode> Internal<M> {
             native::UCM_CHANGEVOLUMEW => {
                 // 2048 seems to be the buffer size in unrar,
                 // also it's the maximum path length since 5.00.
-                let next = unsafe { WideCString::from_ptr_truncate(p1 as *const _, 2048) };
+                let next =
+                    unsafe { widestring::WideCString::from_ptr_truncate(p1 as *const _, 2048) };
                 user_data.1 = Some(next);
                 match p2 {
                     // Next volume not found. -1 means stop
@@ -533,8 +536,8 @@ impl<M: ProcessMode> Internal<M> {
 
     fn process_file_raw(
         handle: &Handle,
-        path: Option<&WideCString>,
-        file: Option<&WideCString>,
+        path: Option<&pathed::RarStr>,
+        file: Option<&pathed::RarStr>,
     ) -> UnrarResult<M::Output> {
         let mut user_data: Userdata<M::Output> = Default::default();
         unsafe {
@@ -544,16 +547,12 @@ impl<M: ProcessMode> Internal<M> {
                 &mut user_data as *mut _ as native::LPARAM,
             );
         }
-        let process_result = Code::from(unsafe {
-            native::RARProcessFileW(
-                handle.0.as_ptr(),
-                M::OPERATION as i32,
-                path.map(|path| path.as_ptr() as *const _)
-                    .unwrap_or(std::ptr::null()),
-                file.map(|file| file.as_ptr() as *const _)
-                    .unwrap_or(std::ptr::null()),
-            )
-        })
+        let process_result = Code::from(pathed::process_file(
+            handle.0.as_ptr(),
+            M::OPERATION as i32,
+            path,
+            file,
+        ))
         .unwrap();
         match process_result {
             Code::Success => Ok(user_data.0),
@@ -646,8 +645,9 @@ impl fmt::Display for FileHeader {
 
 impl From<native::HeaderDataEx> for FileHeader {
     fn from(header: native::HeaderDataEx) -> Self {
-        let filename =
-            unsafe { WideCString::from_ptr_truncate(header.filename_w.as_ptr() as *const _, 1024) };
+        let filename = unsafe {
+            widestring::WideCString::from_ptr_truncate(header.filename_w.as_ptr() as *const _, 1024)
+        };
 
         FileHeader {
             filename: PathBuf::from(filename.to_os_string()),
