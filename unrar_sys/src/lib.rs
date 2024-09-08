@@ -334,17 +334,21 @@ impl OpenArchiveData {
 }
 
 impl OpenArchiveDataEx {
-    pub fn new(
-        #[cfg(target_os = "linux")] archive: *const c_char,
-        #[cfg(not(target_os = "linux"))] archive: *const wchar_t,
+    #[cfg(target_os = "linux")]
+    pub fn new(archive: *const c_char, mode: c_uint) -> Self {
+        Self::new_internal(archive, std::ptr::null(), mode)
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    pub fn new(archive: *const wchar_t, mode: c_uint) -> Self {
+        Self::new_internal(std::ptr::null(), archive, mode)
+    }
+
+    fn new_internal(
+        archive_name: *const c_char,
+        archive_name_w: *const wchar_t,
         mode: c_uint,
     ) -> Self {
-        #[cfg(target_os = "linux")]
-        let (archive_name, archive_name_w) = (archive, std::ptr::null());
-
-        #[cfg(not(target_os = "linux"))]
-        let (archive_name, archive_name_w) = (std::ptr::null(), archive);
-
         OpenArchiveDataEx {
             archive_name,
             archive_name_w,
