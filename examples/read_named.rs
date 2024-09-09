@@ -1,6 +1,6 @@
-use unrar::{Archive, UnrarResult};
+use unrar::Archive;
 
-fn main() -> UnrarResult<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Basic args parsing
     // Usage: cargo run --example extract_named <archive> <entry-filename-to-print>
     let mut args = std::env::args_os().skip(1);

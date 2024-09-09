@@ -1,11 +1,12 @@
+use super::Nulable;
 use std::path::{Path, PathBuf};
 use widestring::{WideCString, WideCStr};
 
 pub(crate) type RarString = WideCString;
 pub(crate) type RarStr = WideCStr;
 
-pub(crate) fn construct(path: &Path) -> RarString {
-    WideCString::from_os_str(path).expect("Unexpected nul in path")
+pub(crate) fn construct<E: crate::RarError>(path: &Path) -> Result<RarString, Nulable<E>> {
+    Ok(WideCString::from_os_str(path)?)
 }
 
 pub(crate) fn process_file(
@@ -13,7 +14,7 @@ pub(crate) fn process_file(
     operation: i32,
     dest_path: Option<&RarStr>,
     dest_name: Option<&RarStr>,
-) -> i32 {
+) -> u32 {
     unsafe {
         unrar_sys::RARProcessFileW(
             handle,
@@ -24,9 +25,9 @@ pub(crate) fn process_file(
     }
 }
 
-pub(crate) fn preprocess_extract(
+pub(crate) fn preprocess_extract<E: crate::RarError>(
     base: Option<&Path>,
     _filename: &PathBuf,
-) -> (Option<RarString>, Option<RarString>) {
-    (base.map(construct), None)
+) -> Result<(Option<RarString>, Option<RarString>), Nulable<E>> {
+    base.map(construct).transpose().map(|base| (base, None))
 }
