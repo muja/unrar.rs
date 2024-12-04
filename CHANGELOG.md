@@ -6,6 +6,30 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2024-12-04
+
+This release fixes extraction of entries with unicode filenames inside RAR archives
+
+Issues: [#44](https://github.com/muja/unrar.rs/issues/44)
+
+### <!--1-->Bug Fixes
+
+- <details>
+  <summary><em>(extract)</em> unicode files on Linux (<a href="https://github.com/muja/unrar.rs/commits/5e6b83d91982234d3686b235dcbc7989402a88fd">5e6b83d</a>, <a href="https://github.com/muja/unrar.rs/issues/44">#44</a>)</summary>
+  <blockquote>
+
+  Unicode files being extracted to directories still caused issues on Linux.<br>
+  For example, if a file `❤️.txt` was part of a RAR archive, extracting it to<br>
+  CWD or by providing a parent dir would fail. This commit adds extensive tests<br>
+  and fixes all those issues definitively.
+  </blockquote>
+  </details>
+
+### <!--8-->Styling
+
+- <em>(sys)</em> function-based cfg for better readability (<a href="https://github.com/muja/unrar.rs/commits/1d9e4133b9de7f2402c37d7d41a3564a8008eddc">1d9e413</a>)
+
+
 ## [0.5.6] - 2024-09-01
 
 This release fixes a reported Windows build error for different locales
