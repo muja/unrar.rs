@@ -1,5 +1,5 @@
-#[cfg_attr(target_os = "linux", path = "linux.rs")]
-#[cfg_attr(not(target_os = "linux"), path = "all.rs")]
+#[cfg_attr(any(target_os = "linux", target_os = "netbsd"), path = "linux.rs")]
+#[cfg_attr(not(any(target_os = "linux", target_os = "netbsd")), path = "all.rs")]
 mod os;
 
 pub(crate) use os::*;
