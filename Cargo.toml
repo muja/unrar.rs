@@ -13,7 +13,7 @@ repository = "https://github.com/muja/unrar.rs"
 
 [dependencies]
 regex = "1"
-bitflags = "1"
+bitflags = "2"
 widestring = "1"
 
 [dependencies.unrar_sys]

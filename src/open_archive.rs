@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 
 bitflags::bitflags! {
-    #[derive(Default)]
+    #[derive(Debug, Default)]
     struct ArchiveFlags: u32 {
         const VOLUME = native::ROADF_VOLUME;
         const COMMENT = native::ROADF_COMMENT;
@@ -562,6 +562,7 @@ impl<M: ProcessMode> Internal<M> {
 }
 
 bitflags::bitflags! {
+    #[derive(Debug)]
     struct EntryFlags: u32 {
         const SPLIT_BEFORE = 0x1;
         const SPLIT_AFTER = 0x2;
