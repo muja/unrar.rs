@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2025-02-19
+
+This release fixes compilation errors for NetBSD
+
+Issues: [#65](https://github.com/muja/unrar.rs/issues/65)
+
+### <!--1-->Bug Fixes
+
+- <em>(netbsd)</em> use libstd++ on netbsd as libc++ is not available (<a href="https://github.com/muja/unrar.rs/commits/8d29b6e83a171fa72a8f253e0c7ad518a73e4e22">8d29b6e</a>, <a href="https://github.com/muja/unrar.rs/issues/65">#65</a>)
+
+### <!--4-->Miscellaneous / Refactors
+
+- <em>(changelog)</em> include dependency updates in changelog (<a href="https://github.com/muja/unrar.rs/commits/efdf4e2951672ed5440a2a157ef5d560e1759a2b">efdf4e2</a>)
+- <em>(deps)</em> upgrade bitflags to v2 (<a href="https://github.com/muja/unrar.rs/commits/22a065bbf9c99eb01c8d5610626dc7656be1d79c">22a065b</a>)
+- remove macos 12 from matrix (<a href="https://github.com/muja/unrar.rs/commits/b4756903711498092f20215d58a04f3633616677">b475690</a>)
+
+
 ## [0.5.7] - 2024-12-04
 
 This release fixes extraction of entries with unicode filenames inside RAR archives
