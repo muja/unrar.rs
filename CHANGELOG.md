@@ -198,6 +198,7 @@ This release fixes a critical UB bug
 
 ### <!--4-->Miscellaneous / Refactors
 
+- <em>(deps)</em> remove unused lazy_static dependency (<a href="https://github.com/muja/unrar.rs/commits/a4adeacab951283691864f14f3172b667abc009a">a4adeac</a>)
 - add test step for unrar_sys library (<a href="https://github.com/muja/unrar.rs/commits/986de022da9336dacc4a0ec3df2404024852b112">986de02</a>)
 
 ### <!--7-->Example

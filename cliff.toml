@@ -75,7 +75,7 @@ body = """
 trim = true
 
 postprocessors = [
-  { pattern = '<REPO>', replace = 'https://github.com/muja/unrar.rs' }
+  { pattern = '<REPO>', replace = 'https://github.com/muja/unrar.rs' },
 ]
 
 [git]
@@ -94,7 +94,6 @@ commit_parsers = [
   { message = ".*example", group = "<!--7-->Example" },
   { message = "^style", group = "<!--8-->Styling" },
   { message = "^chore\\(release\\): prepare for", skip = true },
-  { message = "^chore\\(deps\\)", skip = true },
   { message = "^chore\\(pr\\)", skip = true },
   { message = "^chore\\(pull\\)", skip = true },
   { message = "^.*\\bv[0-9]+\\.", skip = true },
@@ -102,3 +101,4 @@ commit_parsers = [
   { body = ".*security", group = "<!--2-->Security" },
   { message = "^revert", group = "<!--9-->Revert" },
 ]
+
