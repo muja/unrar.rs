@@ -207,8 +207,8 @@ pub struct OpenArchiveDataEx {
 #[link(name = "unrar", kind = "static")]
 #[cfg_attr(all(windows, target_env = "gnu"), link(name = "stdc++", kind = "static", modifiers = "-bundle"))]
 #[cfg_attr(target_os = "macos", link(name = "c++"))]
-#[cfg_attr(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"), link(name = "c++"))]
-#[cfg_attr(target_os = "linux", link(name = "stdc++"))]
+#[cfg_attr(any(target_os = "freebsd", target_os = "openbsd"), link(name = "c++"))]
+#[cfg_attr(any(target_os = "linux", target_os = "netbsd"), link(name = "stdc++"))]
 extern "C" {
     pub fn RAROpenArchive(data: *const OpenArchiveData) -> *const Handle;
 
@@ -334,12 +334,12 @@ impl OpenArchiveData {
 }
 
 impl OpenArchiveDataEx {
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "netbsd"))]
     pub fn new(archive: *const c_char, mode: c_uint) -> Self {
         Self::new_internal(archive, std::ptr::null(), mode)
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "netbsd")))]
     pub fn new(archive: *const wchar_t, mode: c_uint) -> Self {
         Self::new_internal(std::ptr::null(), archive, mode)
     }
