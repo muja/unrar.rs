@@ -69,6 +69,22 @@ impl<'a> Archive<'a> {
             comments: None,
         }
     }
+    
+    /// Creates an `Archive` object to operate on a plain non-encrypted RAR archive.
+    /// as opposed to [`new`](struct.Archive.html#method.new) that borrows from its input, this function takes ownership of it,
+    /// potentially cloning if the input is a reference.
+    /// this function is lifetime-free, allowing the creation of an `Archive<'static>`
+    ///  with dynamically constructed Paths.
+    pub fn new_owned<T>(file: T) -> Self
+    where
+        T: Into<PathBuf>,
+    {
+        Archive {
+            filename: Cow::Owned(file.into()),
+            password: None,
+            comments: None,
+        }
+    }
 
     /// returns the archive's path
     pub fn filename(&self) -> &Path {
