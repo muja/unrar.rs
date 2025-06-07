@@ -573,6 +573,65 @@ bitflags::bitflags! {
     }
 }
 
+/// After enabling the blake2 feature, this enum includes all possible hash options supported by rar.
+#[cfg(feature="checksum")]
+#[derive(Debug)]
+pub enum FileHash {
+    /// Do not have hash
+    None,
+    /// CRC32
+    CRC32(u32),
+    /// BLAKE2
+    BLAKE2([i8; 32]),
+    /// Unsupported checksum type, payload is raw hash_type in HeaderDataEx
+    Unsupported(u32),
+}
+
+#[cfg(feature="checksum")]
+impl FileHash {
+    fn hex(bytes: &[i8], upper: bool) -> String {
+        use std::fmt::Write;
+        let mut hex_string = String::with_capacity(bytes.len() * 2);
+        for &byte in bytes {
+            let byte = u8::from_le_bytes(byte.to_le_bytes());
+            if upper {
+                write!(&mut hex_string, "{:02X}", byte).unwrap();
+            } else {
+                write!(&mut hex_string, "{:02x}", byte).unwrap();
+            }
+        }
+        hex_string
+    }
+}
+
+#[cfg(feature="checksum")]
+impl std::fmt::LowerHex for FileHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FileHash::None => write!(f, ""),
+            FileHash::CRC32(v) => {
+                write!(f, "{:08x}", v)
+            },
+            FileHash::BLAKE2(v) => write!(f, "{}", Self::hex(v, false)),
+            FileHash::Unsupported(_) => write!(f, ""),
+        }
+    }
+}
+
+#[cfg(feature="checksum")]
+impl std::fmt::UpperHex for FileHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FileHash::None => write!(f, ""),
+            FileHash::CRC32(v) => {
+                write!(f, "{:08X}", v)
+            },
+            FileHash::BLAKE2(v) => write!(f, "{}", Self::hex(v, true)),
+            FileHash::Unsupported(_) => write!(f, ""),
+        }
+    }
+}
+
 /// Metadata for an entry in a RAR archive
 ///
 /// Created using the read_header methods in an OpenArchive, contains
@@ -583,7 +642,10 @@ pub struct FileHeader {
     pub filename: PathBuf,
     flags: EntryFlags,
     pub unpacked_size: u64,
+    #[cfg(not(feature="checksum"))]
     pub file_crc: u32,
+    #[cfg(feature="checksum")]
+    pub file_crc: FileHash,
     pub file_time: u32,
     pub method: u32,
     pub file_attr: u32,
@@ -647,14 +709,31 @@ impl fmt::Display for FileHeader {
 impl From<native::HeaderDataEx> for FileHeader {
     fn from(header: native::HeaderDataEx) -> Self {
         let filename = unsafe {
-            widestring::WideCString::from_ptr_truncate(header.filename_w.as_ptr() as *const _, 1024)
+            let filename_w = header.filename_w;
+            widestring::WideCString::from_ptr_truncate(filename_w.as_ptr() as *const _, 1024)
         };
+
+        let file_crc;
+        #[cfg(feature="checksum")]
+        {
+            let hash_type = header.hash_type;
+            match hash_type {
+                0 => file_crc = FileHash::None,
+                1 => file_crc = FileHash::CRC32(header.file_crc),
+                2 => file_crc = FileHash::BLAKE2(header.hash),
+                v => file_crc = FileHash::Unsupported(v)
+            }
+        }
+        #[cfg(not(feature="checksum"))]
+        {
+            file_crc = header.file_crc;
+        }
 
         FileHeader {
             filename: PathBuf::from(filename.to_os_string()),
             flags: EntryFlags::from_bits(header.flags).unwrap(),
             unpacked_size: unpack_unp_size(header.unp_size, header.unp_size_high),
-            file_crc: header.file_crc,
+            file_crc,
             file_time: header.file_time,
             method: header.method,
             file_attr: header.file_attr,

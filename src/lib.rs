@@ -12,3 +12,5 @@ pub use open_archive::{
     CursorBeforeFile, CursorBeforeHeader, FileHeader, List, ListSplit, OpenArchive, Process,
     VolumeInfo,
 };
+#[cfg(feature="checksum")]
+pub use open_archive::FileHash;
