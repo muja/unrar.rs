@@ -18,16 +18,22 @@ jobs:
       matrix:
         include:
           # Windows
-          - name: Windows x86_64
+          - name: Windows 2022 x86_64
             os: windows-2022
+          - name: Windows 2025 x86_64
+            os: windows-2025
           # MacOS
           - name: MacOS 14
             os: macos-14
-          - name: MacOS 13 x86_64
-            os: macos-13
+          - name: MacOS 15
+            os: macos-15
+          - name: MacOS 15 x86_64
+            os: macos-15-intel
+          - name: MacOS 26
+            os: macos-26
           # Linux
-          - name: Linux x86_64
-            os: ubuntu-22.04
+          - name: Linux 24.04 x86_64
+            os: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v3

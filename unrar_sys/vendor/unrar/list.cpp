@@ -37,7 +37,7 @@ void ListArchive(CommandData *Cmd)
           mprintf(L"\n%s: %s",St(MListArchive),Arc.FileName.c_str());
 
           mprintf(L"\n%s: ",St(MListDetails));
-          const wchar *Fmt=Arc.Format==RARFMT14 ? L"RAR 1.4":(Arc.Format==RARFMT15 ? L"RAR 4":L"RAR 5");
+          const wchar *Fmt=Arc.Format==RARFMT14 ? L"RAR 1.4":(Arc.Format==RARFMT15 ? L"RAR 1.5":L"RAR 5");
           mprintf(L"%s", Fmt);
           if (Arc.Solid)
             mprintf(L", %s", St(MListSolid));
@@ -110,10 +110,21 @@ void ListArchive(CommandData *Cmd)
               }
               break;
             case HEAD_SERVICE:
+              // For service blocks dependent on previous block, such as ACL
+              // or NTFS stream, we use "file matched" flag of host file.
+              // Independent blocks like RR are matched separately,
+              // so we can list them by their name. Also we match even
+              // dependent blocks separately if "vta -idn" are set. User may
+              // want to see service blocks only in this case.
+              if (!Arc.SubHead.SubBlock || Cmd->DisableNames)
+                FileMatched=Cmd->IsProcessFile(Arc.SubHead,NULL,MATCH_WILDSUBPATH,0,NULL)!=0;
               if (FileMatched && !Bare)
               {
+                // Here we set DisableNames parameter to true regardless of
+                // Cmd->DisableNames. If "vta -idn" are set together, user
+                // wants to see service blocks like RR only.
                 if (Technical && ShowService)
-                  ListFileHeader(Arc,Arc.SubHead,TitleShown,Verbose,true,false,Cmd->DisableNames);
+                  ListFileHeader(Arc,Arc.SubHead,TitleShown,Verbose,true,false,false);
               }
               break;
           }
@@ -130,15 +141,15 @@ void ListArchive(CommandData *Cmd)
         
             if (Verbose)
             {
-              mprintf(L"\n----------- ---------  -------- ----- ---------- -----  --------  ----");
-              mprintf(L"\n%21ls %9ls %3d%%  %-27ls %u",UnpSizeText,
+              mprintf(L"\n----------- ---------- ---------- ----- ---------- -----  --------  ----");
+              mprintf(L"\n%22ls %10ls %3d%%  %-27ls %u",UnpSizeText,
                       PackSizeText,ToPercentUnlim(TotalPackSize,TotalUnpSize),
                       VolNumText,FileCount);
             }
             else
             {
-              mprintf(L"\n----------- ---------  ---------- -----  ----");
-              mprintf(L"\n%21ls  %-16ls  %u",UnpSizeText,VolNumText,FileCount);
+              mprintf(L"\n----------- ----------  ---------- -----  ----");
+              mprintf(L"\n%22ls  %-16ls  %u",UnpSizeText,VolNumText,FileCount);
             }
 
             SumFileCount+=FileCount;
@@ -201,13 +212,13 @@ void ListFileHeader(Archive &Arc,FileHeader &hd,bool &TitleShown,bool Verbose,bo
     {
       mprintf(L"\n%ls",St(MListTitleV));
       if (!DisableNames)
-        mprintf(L"\n----------- ---------  -------- ----- ---------- -----  --------  ----");
+        mprintf(L"\n----------- ---------- ---------- ----- ---------- -----  --------  ----");
     }
     else
     {
       mprintf(L"\n%ls",St(MListTitleL));
       if (!DisableNames)
-        mprintf(L"\n----------- ---------  ---------- -----  ----");
+        mprintf(L"\n----------- ----------  ---------- -----  ----");
     }
     // Must be set even in DisableNames mode to suppress "0 files" output
     // unless no files are matched.
@@ -249,7 +260,7 @@ void ListFileHeader(Archive &Arc,FileHeader &hd,bool &TitleShown,bool Verbose,bo
       if (hd.SplitAfter)
         wcsncpyz(RatioStr,L"-->",ASIZE(RatioStr));
       else
-        swprintf(RatioStr,ASIZE(RatioStr),L"%d%%",ToPercentUnlim(hd.PackSize,hd.UnpSize));
+        swprintf(RatioStr,ASIZE(RatioStr),L"%u%%",ToPercentUnlim(hd.PackSize,hd.UnpSize));
 
   wchar DateStr[50];
   hd.mtime.GetText(DateStr,ASIZE(DateStr),Technical);
@@ -315,6 +326,14 @@ void ListFileHeader(Archive &Arc,FileHeader &hd,bool &TitleShown,bool Verbose,bo
       mprintf(L"\n%12ls: %ls",St(MListSize),UnpSizeText);
       mprintf(L"\n%12ls: %ls",St(MListPacked),PackSizeText);
       mprintf(L"\n%12ls: %ls",St(MListRatio),RatioStr);
+
+      if (!FileBlock && Arc.SubHead.CmpName(SUBHEAD_TYPE_RR))
+      {
+        // Display the original -rrN percent if available.
+        int RecoveryPercent=Arc.GetRecoveryPercent();
+        if (RecoveryPercent>0) // It can be -1 if failed to detect.
+          mprintf(L"\n%12ls: %u%%",L"RR%", RecoveryPercent);
+      }
     }
     bool WinTitles=false;
 #ifdef _WIN_ALL
@@ -413,10 +432,11 @@ void ListFileHeader(Archive &Arc,FileHeader &hd,bool &TitleShown,bool Verbose,bo
     return;
   }
 
-  mprintf(L"\n%c%10ls %9ls ",hd.Encrypted ? '*' : ' ',AttrStr,UnpSizeText);
+  // 2025.12.01: Size field width incremented to properly align 1+ GB sizes.
+  mprintf(L"\n%c%10ls %10ls ",hd.Encrypted ? '*' : ' ',AttrStr,UnpSizeText);
 
   if (Verbose)
-    mprintf(L"%9ls %4ls ",PackSizeText,RatioStr);
+    mprintf(L"%10ls %4ls ",PackSizeText,RatioStr);
 
   mprintf(L" %ls  ",DateStr);
 

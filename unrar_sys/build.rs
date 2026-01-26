@@ -2,6 +2,7 @@ fn main() {
     if cfg!(windows) {
         println!("cargo:rustc-flags=-lpowrprof");
         println!("cargo:rustc-link-lib=shell32");
+        println!("cargo:rustc-link-lib=advapi32"); 
         if cfg!(target_env = "gnu") {
             println!("cargo:rustc-link-lib=pthread");
         }
@@ -56,6 +57,9 @@ fn main() {
         "scantree",
         "dll",
         "qopen",
+        "largepage",  // New in unrar 7.x for large page memory allocation
+        #[cfg(windows)]
+        "motw",       // New in unrar 7.x for Mark of the Web support (Windows only)
     ].iter().map(|&s| format!("vendor/unrar/{s}.cpp")).collect();
     cc::Build::new()
         .cpp(true) // Switch to C++ library compilation.

@@ -9,5 +9,5 @@ Upgrading unrar DLL is simple:
 The small script [`upgrade.sh`](./upgrade.sh) will automate these steps if you provide it the URL to the tarball, e.g.:
 
 ```bash
-./upgrade.sh https://www.rarlab.com/rar/unrarsrc-6.2.12.tar.gz
+./upgrade.sh https://www.rarlab.com/rar/unrarsrc-7.2.3.tar.gz
 ```
