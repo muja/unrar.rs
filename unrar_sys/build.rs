@@ -8,7 +8,8 @@ fn main() {
         if cfg!(target_env = "gnu") {
             println!("cargo:rustc-link-lib=pthread");
         }
-    } else {
+    } else if target_os != "android" {
+        // Android's Bionic libc includes pthread; no separate libpthread exists
         println!("cargo:rustc-link-lib=pthread");
     }
 
