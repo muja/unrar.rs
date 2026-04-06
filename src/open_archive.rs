@@ -1,9 +1,14 @@
 use super::error::*;
 use super::*;
 use std::fmt;
+use std::io::{self, Read};
 use std::os::raw::{c_int, c_uint};
 use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{self, Receiver, SyncSender};
+use std::sync::Arc;
+use std::thread::JoinHandle;
 
 bitflags::bitflags! {
     #[derive(Debug, Default)]
@@ -39,6 +44,13 @@ impl Drop for Handle {
         unsafe { native::RARCloseArchive(self.0.as_ptr() as *const _) };
     }
 }
+
+// SAFETY: Handle is only ever accessed by one thread at a time.
+// Ownership is transferred to the producer thread, never shared.
+// The C++ unrar library uses handle-scoped state, not thread-local storage
+// (verified: C++ TLS audit passed for vendored unrar v7.1 / DLL version 7).
+// Re-verify if the vendored C++ source is updated.
+unsafe impl Send for Handle {}
 
 /// An open RAR archive that can be read or processed.
 ///
@@ -432,6 +444,89 @@ impl OpenArchive<Process, CursorBeforeFile> {
         let (path, file) = pathed::preprocess_extract(base, &self.entry().filename);
         self.process_file::<Extract>(path.as_deref(), file.as_deref())
     }
+
+    /// Reads the underlying file as a streaming [`Read`] implementor.
+    ///
+    /// Returns a [`StreamingEntry`] that yields decompressed data on demand.
+    /// Decompression runs on a background thread; calling `read()` on the
+    /// returned `StreamingEntry` blocks until data is available.
+    ///
+    /// The bounded channel holds at most 4 chunks (up to 1 MB each), providing
+    /// natural backpressure.
+    ///
+    /// When done reading, call [`StreamingEntry::finish()`] to reclaim the
+    /// [`OpenArchive`] for continued iteration.
+    pub fn read_streaming(self) -> StreamingEntry {
+        let abort = Arc::new(AtomicBool::new(false));
+        let discard = Arc::new(AtomicBool::new(false));
+        let decompressed_bytes = Arc::new(AtomicU64::new(0));
+        let (sender, receiver) = mpsc::sync_channel::<StreamMessage>(4);
+
+        let abort_clone = Arc::clone(&abort);
+        let discard_clone = Arc::clone(&discard);
+        let decompressed_bytes_clone = Arc::clone(&decompressed_bytes);
+
+        // Move fields out of self — OpenArchive has no Drop impl,
+        // so Rust allows moving individual fields.
+        let handle = self.handle;
+        let flags = self.flags;
+        let damaged = self.damaged;
+
+        let join_handle = std::thread::Builder::new()
+            .name("unrar-streaming-producer".into())
+            .stack_size(512 * 1024)
+            .spawn(move || {
+                let mut userdata = StreamingUserdata {
+                    streaming: StreamingState {
+                        sender,
+                        abort: abort_clone,
+                        discard: discard_clone,
+                        decompressed_bytes: decompressed_bytes_clone,
+                    },
+                    volume: None,
+                };
+                unsafe {
+                    native::RARSetCallback(
+                        handle.0.as_ptr(),
+                        Some(streaming_callback),
+                        &mut userdata as *mut _ as native::LPARAM,
+                    );
+                }
+                let process_result = Code::from(pathed::process_file(
+                    handle.0.as_ptr(),
+                    private::Operation::Test as i32,
+                    None,
+                    None,
+                ))
+                .unwrap();
+                let tx = &userdata.streaming.sender;
+                match process_result {
+                    Code::Success => {
+                        let _ = tx.send(StreamMessage::Done);
+                        Ok((handle, flags, damaged))
+                    }
+                    _ => {
+                        let err = UnrarError::from(process_result, When::Process);
+                        let _ = tx.send(StreamMessage::Error(
+                            UnrarError::from(err.code, err.when),
+                        ));
+                        Err(err)
+                    }
+                }
+            })
+            .expect("failed to spawn unrar-streaming-producer thread");
+
+        StreamingEntry {
+            receiver,
+            abort,
+            discard,
+            decompressed_bytes,
+            join_handle: Some(join_handle),
+            buffer: Vec::new(),
+            buffer_pos: 0,
+            done: false,
+        }
+    }
 }
 
 fn read_header(handle: &Handle) -> UnrarResult<Option<FileHeader>> {
@@ -496,6 +591,264 @@ impl ProcessMode for Test {
     fn process_data(_: &mut Self::Output, _: &[u8]) {}
 }
 
+/// Shared volume-change handler used by both the existing and streaming callbacks.
+fn handle_volume_change(
+    volume: &mut Option<widestring::WideCString>,
+    p1: native::LPARAM,
+    p2: native::LPARAM,
+) -> c_int {
+    *volume = Some(unsafe {
+        widestring::WideCString::from_ptr_truncate(p1 as *const _, 2048)
+    });
+    // p2 carries RAR_VOL_ASK (0) or RAR_VOL_NOTIFY (1)
+    // Return -1 for ASK (next volume not found), 0 otherwise
+    if p2 == native::RAR_VOL_ASK {
+        -1
+    } else {
+        0
+    }
+}
+
+extern "C" fn streaming_callback(
+    msg: native::UINT,
+    user_data: native::LPARAM,
+    p1: native::LPARAM,
+    p2: native::LPARAM,
+) -> c_int {
+    if user_data == 0 {
+        return -1;
+    }
+    let state = unsafe { &mut *(user_data as *mut StreamingUserdata) };
+    match msg {
+        native::UCM_CHANGEVOLUMEW => handle_volume_change(&mut state.volume, p1, p2),
+        native::UCM_PROCESSDATA => {
+            if state.streaming.abort.load(Ordering::Relaxed) {
+                return -1;
+            }
+            if p2 <= 0 {
+                return 0;
+            }
+            let len = p2 as usize;
+            if len > MAX_CHUNK_SIZE {
+                let _ = state.streaming.sender.send(StreamMessage::Error(
+                    UnrarError::from(Code::BadData, When::Process),
+                ));
+                return -1;
+            }
+            // Count every byte the C library decompresses, regardless of
+            // whether we send it, discard it, or abort.
+            state.streaming.decompressed_bytes.fetch_add(len as u64, Ordering::Relaxed);
+            if state.streaming.discard.load(Ordering::Relaxed) {
+                return 0;
+            }
+            let chunk = unsafe { std::slice::from_raw_parts(p1 as *const u8, len) };
+            match state.streaming.sender.send(StreamMessage::Chunk(chunk.to_vec())) {
+                Ok(()) => 0,
+                Err(_) => -1,
+            }
+        }
+        _ => 0,
+    }
+}
+
+const MAX_CHUNK_SIZE: usize = 1_048_576; // 1MB
+
+#[derive(Debug)]
+enum StreamMessage {
+    Chunk(Vec<u8>),
+    Error(UnrarError),
+    Done,
+}
+
+struct StreamingState {
+    sender: SyncSender<StreamMessage>,
+    abort: Arc<AtomicBool>,
+    discard: Arc<AtomicBool>,
+    /// Total bytes delivered by the C library via UCM_PROCESSDATA callbacks,
+    /// regardless of whether they were sent, discarded, or aborted.
+    decompressed_bytes: Arc<AtomicU64>,
+}
+
+struct StreamingUserdata {
+    streaming: StreamingState,
+    volume: Option<widestring::WideCString>,
+}
+
+/// A streaming reader for a single RAR archive entry.
+///
+/// Implements [`std::io::Read`]. Created by [`OpenArchive::read_streaming()`].
+/// Call [`.finish()`](StreamingEntry::finish) when done to reclaim the archive.
+/// If dropped without calling `finish()`, decompression is hard-aborted and the
+/// producer thread is joined with a 5-second timeout.
+///
+/// # Producer panic behavior
+///
+/// If the producer thread panics, `read()` returns EOF. `finish()` returns an
+/// error because the archive `Handle` is lost.
+pub struct StreamingEntry {
+    receiver: Receiver<StreamMessage>,
+    abort: Arc<AtomicBool>,
+    discard: Arc<AtomicBool>,
+    decompressed_bytes: Arc<AtomicU64>,
+    join_handle: Option<JoinHandle<UnrarResult<(Handle, ArchiveFlags, bool)>>>,
+    buffer: Vec<u8>,
+    buffer_pos: usize,
+    done: bool,
+}
+
+impl fmt::Debug for StreamingEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StreamingEntry")
+            .field("abort", &self.abort.load(Ordering::Relaxed))
+            .field("discard", &self.discard.load(Ordering::Relaxed))
+            .field("decompressed_bytes", &self.decompressed_bytes.load(Ordering::Relaxed))
+            .field("buffer_len", &self.buffer.len())
+            .field("buffer_pos", &self.buffer_pos)
+            .field("done", &self.done)
+            .field("thread_active", &self.join_handle.is_some())
+            .finish()
+    }
+}
+
+impl Read for StreamingEntry {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.buffer_pos < self.buffer.len() {
+            let remaining = &self.buffer[self.buffer_pos..];
+            let n = remaining.len().min(buf.len());
+            buf[..n].copy_from_slice(&remaining[..n]);
+            self.buffer_pos += n;
+            if self.buffer_pos == self.buffer.len() {
+                self.buffer.clear();
+                self.buffer_pos = 0;
+            }
+            return Ok(n);
+        }
+        if self.done {
+            return Ok(0);
+        }
+        match self.receiver.recv() {
+            Ok(StreamMessage::Chunk(data)) => {
+                let n = data.len().min(buf.len());
+                buf[..n].copy_from_slice(&data[..n]);
+                if n < data.len() {
+                    self.buffer = data;
+                    self.buffer_pos = n;
+                }
+                Ok(n)
+            }
+            Ok(StreamMessage::Error(e)) => {
+                self.done = true;
+                Err(io::Error::new(io::ErrorKind::Other, e.to_string()))
+            }
+            Ok(StreamMessage::Done) | Err(_) => {
+                self.done = true;
+                Ok(0)
+            }
+        }
+    }
+}
+
+impl StreamingEntry {
+    /// Switch to discard mode: decompression continues but data is
+    /// no longer sent through the channel.
+    pub fn set_discard(&self) {
+        self.discard.store(true, Ordering::Relaxed);
+    }
+
+    /// Total bytes decompressed by the C library for this entry.
+    ///
+    /// Counts every byte delivered via `UCM_PROCESSDATA` callbacks,
+    /// including bytes that were discarded or never read by the consumer.
+    /// Useful for tracking actual decompression work (e.g., budget limits).
+    pub fn decompressed_bytes(&self) -> u64 {
+        self.decompressed_bytes.load(Ordering::Relaxed)
+    }
+
+    /// Finish streaming and reclaim the archive.
+    ///
+    /// If `set_discard()` was called, waits for decompression to complete
+    /// naturally (dictionary preserved for solid archives).
+    /// Otherwise, signals hard abort and waits for the producer to exit.
+    ///
+    /// Returns `(archive, decompressed_bytes)` where `decompressed_bytes` is
+    /// the final count of bytes delivered by the C library for this entry
+    /// (including discarded bytes). Read after joining the producer thread,
+    /// so it reflects the complete decompression.
+    pub fn finish(mut self) -> UnrarResult<(OpenArchive<Process, CursorBeforeHeader>, u64)> {
+        if !self.done {
+            if self.discard.load(Ordering::Relaxed) {
+                loop {
+                    match self.receiver.recv() {
+                        Ok(StreamMessage::Done) | Err(_) => break,
+                        Ok(StreamMessage::Error(_)) => break,
+                        Ok(StreamMessage::Chunk(_)) => continue,
+                    }
+                }
+            } else {
+                // Hard abort: signal the producer to return -1 from the callback,
+                // then drain buffered chunks to unblock any in-flight send().
+                // After drain, at most one more chunk can arrive (the send that
+                // was in progress), leaving the channel with <=1 items. The
+                // producer then sees the abort flag and exits. join() below
+                // blocks until that happens. The orphan chunk (if any) is freed
+                // when the Receiver is dropped.
+                self.abort.store(true, Ordering::Relaxed);
+                while self.receiver.try_recv().is_ok() {}
+            }
+        }
+
+        if let Some(handle) = self.join_handle.take() {
+            match handle.join() {
+                Ok(result) => {
+                    // Read final counter after join — producer is done,
+                    // so this is the complete decompression byte count.
+                    let final_bytes = self.decompressed_bytes.load(Ordering::Relaxed);
+                    let (handle, flags, damaged) = result?;
+                    Ok((
+                        OpenArchive {
+                            extra: CursorBeforeHeader,
+                            damaged,
+                            handle,
+                            flags,
+                            marker: std::marker::PhantomData,
+                        },
+                        final_bytes,
+                    ))
+                }
+                Err(_panic) => Err(UnrarError::from(Code::Unknown, When::Process)),
+            }
+        } else {
+            Err(UnrarError::from(Code::Unknown, When::Process))
+        }
+    }
+}
+
+impl Drop for StreamingEntry {
+    fn drop(&mut self) {
+        self.abort.store(true, Ordering::Relaxed);
+        while self.receiver.try_recv().is_ok() {}
+        if let Some(handle) = self.join_handle.take() {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            loop {
+                if handle.is_finished() {
+                    let _ = handle.join();
+                    break;
+                }
+                if std::time::Instant::now() >= deadline {
+                    eprintln!(
+                        "[unrar] CRITICAL: streaming producer thread did not exit within 5s \
+                         after abort signal — detaching thread. This leaks a file descriptor \
+                         to the open RAR archive."
+                    );
+                    drop(handle); // Detaches the thread (JoinHandle::drop does not join)
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+        }
+    }
+}
+
 struct Internal<M: ProcessMode> {
     marker: std::marker::PhantomData<M>,
 }
@@ -513,20 +866,18 @@ impl<M: ProcessMode> Internal<M> {
         let user_data = unsafe { &mut *(user_data as *mut Userdata<M::Output>) };
         match msg {
             native::UCM_CHANGEVOLUMEW => {
-                // 2048 seems to be the buffer size in unrar,
-                // also it's the maximum path length since 5.00.
-                let next =
-                    unsafe { widestring::WideCString::from_ptr_truncate(p1 as *const _, 2048) };
-                user_data.1 = Some(next);
-                match p2 {
-                    // Next volume not found. -1 means stop
-                    native::RAR_VOL_ASK => -1,
-                    // Next volume found, 0 means continue
-                    _ => 0,
-                }
+                handle_volume_change(&mut user_data.1, p1, p2)
             }
             native::UCM_PROCESSDATA => {
-                let raw_slice = std::ptr::slice_from_raw_parts(p1 as *const u8, p2 as _);
+                if p2 <= 0 {
+                    return 0; // Ignore zero/negative-length chunks
+                }
+                let len = p2 as usize;
+                if len > MAX_CHUNK_SIZE {
+                    // Anomalous chunk from C library — abort
+                    return -1;
+                }
+                let raw_slice = std::ptr::slice_from_raw_parts(p1 as *const u8, len);
                 M::process_data(&mut user_data.0, unsafe { &*raw_slice as &_ });
                 0
             }
