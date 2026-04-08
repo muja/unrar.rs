@@ -1,3 +1,5 @@
+use std::process::Command;
+
 fn main() {
     let target = std::env::var("TARGET").unwrap_or_default();
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
@@ -143,6 +145,19 @@ fn main() {
                 _ => format!("-mios-version-min={}", min_version),
             };
             build.flag(&flag);
+        }
+    }
+
+    // Prefer llvm-ar on Apple targets because BSD ar does not support
+    // deterministic mode flags used by the C/C++ toolchain integration.
+    if target.contains("apple") {
+        if let Ok(output) = Command::new("xcrun").args(["--find", "llvm-ar"]).output() {
+            if output.status.success() {
+                let archiver = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+                if !archiver.is_empty() {
+                    build.archiver(archiver);
+                }
+            }
         }
     }
 
