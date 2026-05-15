@@ -1,5 +1,8 @@
 #include "rar.hpp"
 
+#define MAX_HEAD_SIZE (1<<10) // 1 Kb
+#define MAX_DATA_SIZE (1<<27) // 128 Mb
+
 size_t Archive::ReadHeader()
 {
   // Once we failed to decrypt an encrypted block, there is no reason to
@@ -183,6 +186,11 @@ size_t Archive::ReadHeader15()
     BrokenHeaderMsg();
     return 0;
   }
+  if (Decrypt && (ShortBlock.HeadSize>MAX_HEAD_SIZE))
+  {
+    FailedHeaderDecryption=true;
+    return 0;
+  }
 
   // For simpler further processing we map header types common
   // for RAR 1.5 and 5.0 formats to RAR 5.0 values. It does not include
@@ -254,7 +262,7 @@ size_t Archive::ReadHeader15()
         hd->SplitAfter=(hd->Flags & LHD_SPLIT_AFTER)!=0;
         hd->Encrypted=(hd->Flags & LHD_PASSWORD)!=0;
         hd->SaltSet=(hd->Flags & LHD_SALT)!=0;
-        
+
         // RAR versions earlier than 2.0 do not set the solid flag
         // in file header. They use only a global solid archive flag.
         hd->Solid=FileBlock && (hd->Flags & LHD_SOLID)!=0;
@@ -266,6 +274,12 @@ size_t Archive::ReadHeader15()
         hd->Version=(hd->Flags & LHD_VERSION)!=0;
 
         hd->DataSize=Raw.Get4();
+        if (Decrypt && (hd->DataSize>MAX_DATA_SIZE))
+        {
+          FailedHeaderDecryption=true;
+          return 0;
+        }
+
         uint LowUnpSize=Raw.Get4();
         hd->HostOS=Raw.Get1();
 
@@ -462,6 +476,11 @@ size_t Archive::ReadHeader15()
     case HEAD3_PROTECT:
       ProtectHead.SetBaseBlock(ShortBlock);
       ProtectHead.DataSize=Raw.Get4();
+      if (Decrypt && (ProtectHead.DataSize>MAX_DATA_SIZE))
+      {
+        FailedHeaderDecryption=true;
+        return 0;
+      }
       ProtectHead.Version=Raw.Get1();
       ProtectHead.RecSectors=Raw.Get2();
       ProtectHead.TotalBlocks=Raw.Get4();
@@ -471,6 +490,11 @@ size_t Archive::ReadHeader15()
     case HEAD3_OLDSERVICE: // RAR 2.9 and earlier.
       SubBlockHead.SetBaseBlock(ShortBlock);
       SubBlockHead.DataSize=Raw.Get4();
+      if (Decrypt && (SubBlockHead.DataSize>MAX_DATA_SIZE))
+      {
+        FailedHeaderDecryption=true;
+        return 0;
+      }
       NextBlockPos+=SubBlockHead.DataSize;
       SubBlockHead.SubType=Raw.Get2();
       SubBlockHead.Level=Raw.Get1();
@@ -514,7 +538,7 @@ size_t Archive::ReadHeader15()
   // but included them into CRC, so it couldn't be verified with generic
   // approach here.
   if (ShortBlock.HeadCRC!=HeaderCRC && ShortBlock.HeaderType!=HEAD3_SIGN &&
-      ShortBlock.HeaderType!=HEAD3_AV && 
+      ShortBlock.HeaderType!=HEAD3_AV &&
       (ShortBlock.HeaderType!=HEAD3_OLDSERVICE || SubBlockHead.SubType!=UO_HEAD))
   {
     bool Recovered=false;
@@ -541,6 +565,11 @@ size_t Archive::ReadHeader15()
         return 0;
       }
     }
+  }
+  if (Decrypt && (NextBlockPos > FileLength()))
+  {
+    FailedHeaderDecryption=true;
+    return 0;
   }
 
   return Raw.Size();
@@ -581,7 +610,7 @@ size_t Archive::ReadHeader50()
     RarCheckPassword CheckPwd;
     if (CryptHead.UsePswCheck && !BrokenHeader)
       CheckPwd.Set(CryptHead.Salt,HeadersInitV,CryptHead.Lg2Count,CryptHead.PswCheck);
-    
+
     while (true) // Repeat the password prompt for wrong passwords.
     {
       RequestArcPassword(CheckPwd.IsSet() ? &CheckPwd:NULL);
