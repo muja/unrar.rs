@@ -629,29 +629,40 @@ extern "C" fn streaming_callback(
                 return 0;
             }
             let len = p2 as usize;
-            if len > MAX_CHUNK_SIZE {
-                let _ = state.streaming.sender.send(StreamMessage::Error(
-                    UnrarError::from(Code::BadData, When::Process),
-                ));
-                return -1;
-            }
             // Count every byte the C library decompresses, regardless of
             // whether we send it, discard it, or abort.
-            state.streaming.decompressed_bytes.fetch_add(len as u64, Ordering::Relaxed);
+            state
+                .streaming
+                .decompressed_bytes
+                .fetch_add(len as u64, Ordering::Relaxed);
             if state.streaming.discard.load(Ordering::Relaxed) {
                 return 0;
             }
-            let chunk = unsafe { std::slice::from_raw_parts(p1 as *const u8, len) };
-            match state.streaming.sender.send(StreamMessage::Chunk(chunk.to_vec())) {
-                Ok(()) => 0,
-                Err(_) => -1,
+            let mut offset = 0;
+            while offset < len {
+                if state.streaming.abort.load(Ordering::Relaxed) {
+                    return -1;
+                }
+                let chunk_len = (len - offset).min(MAX_CHUNK_SIZE);
+                let chunk =
+                    unsafe { std::slice::from_raw_parts((p1 as *const u8).add(offset), chunk_len) };
+                if state
+                    .streaming
+                    .sender
+                    .send(StreamMessage::Chunk(chunk.to_vec()))
+                    .is_err()
+                {
+                    return -1;
+                }
+                offset += chunk_len;
             }
+            0
         }
         _ => 0,
     }
 }
 
-const MAX_CHUNK_SIZE: usize = 1_048_576; // 1MB
+const MAX_CHUNK_SIZE: usize = 1_048_576; // 1 MB transport chunk size.
 
 #[derive(Debug)]
 enum StreamMessage {
@@ -873,12 +884,16 @@ impl<M: ProcessMode> Internal<M> {
                     return 0; // Ignore zero/negative-length chunks
                 }
                 let len = p2 as usize;
-                if len > MAX_CHUNK_SIZE {
-                    // Anomalous chunk from C library — abort
-                    return -1;
+                let mut offset = 0;
+                while offset < len {
+                    let chunk_len = (len - offset).min(MAX_CHUNK_SIZE);
+                    let raw_slice = std::ptr::slice_from_raw_parts(
+                        unsafe { (p1 as *const u8).add(offset) },
+                        chunk_len,
+                    );
+                    M::process_data(&mut user_data.0, unsafe { &*raw_slice as &_ });
+                    offset += chunk_len;
                 }
-                let raw_slice = std::ptr::slice_from_raw_parts(p1 as *const u8, len);
-                M::process_data(&mut user_data.0, unsafe { &*raw_slice as &_ });
                 0
             }
             _ => 0,
@@ -1019,10 +1034,73 @@ fn unpack_unp_size(unp_size: c_uint, unp_size_high: c_uint) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use std::sync::mpsc;
+
     #[test]
     fn combine_size() {
         use super::unpack_unp_size;
         let (high, low) = (1u32, 1464303715u32);
         assert_eq!(unpack_unp_size(low, high), 5759271011);
+    }
+
+    #[test]
+    fn streaming_callback_splits_process_data_larger_than_transport_chunk() {
+        let payload = vec![0xA5; MAX_CHUNK_SIZE + 17];
+        let (sender, receiver) = mpsc::sync_channel(4);
+        let abort = Arc::new(AtomicBool::new(false));
+        let discard = Arc::new(AtomicBool::new(false));
+        let decompressed_bytes = Arc::new(AtomicU64::new(0));
+        let streaming = StreamingState {
+            sender,
+            abort,
+            discard,
+            decompressed_bytes: decompressed_bytes.clone(),
+        };
+        let mut user_data = StreamingUserdata {
+            streaming,
+            volume: None,
+        };
+
+        let result = streaming_callback(
+            native::UCM_PROCESSDATA,
+            &mut user_data as *mut _ as native::LPARAM,
+            payload.as_ptr() as native::LPARAM,
+            payload.len() as native::LPARAM,
+        );
+
+        assert_eq!(result, 0);
+        assert_eq!(
+            decompressed_bytes.load(Ordering::Relaxed),
+            payload.len() as u64
+        );
+
+        let chunks: Vec<Vec<u8>> = receiver
+            .try_iter()
+            .map(|message| match message {
+                StreamMessage::Chunk(chunk) => chunk,
+                other => panic!("unexpected stream message: {other:?}"),
+            })
+            .collect();
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].len(), MAX_CHUNK_SIZE);
+        assert_eq!(chunks[1].len(), 17);
+        assert_eq!(chunks.concat(), payload);
+    }
+
+    #[test]
+    fn process_callback_accepts_process_data_larger_than_transport_chunk() {
+        let payload = vec![0x5A; MAX_CHUNK_SIZE + 23];
+        let mut user_data: Userdata<Vec<u8>> = Default::default();
+
+        let result = Internal::<ReadToVec>::callback(
+            native::UCM_PROCESSDATA,
+            &mut user_data as *mut _ as native::LPARAM,
+            payload.as_ptr() as native::LPARAM,
+            payload.len() as native::LPARAM,
+        );
+
+        assert_eq!(result, 0);
+        assert_eq!(user_data.0, payload);
     }
 }
