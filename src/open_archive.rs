@@ -513,11 +513,23 @@ impl<M: ProcessMode> Internal<M> {
         let user_data = unsafe { &mut *(user_data as *mut Userdata<M::Output>) };
         match msg {
             native::UCM_CHANGEVOLUMEW => {
-                // 2048 seems to be the buffer size in unrar,
-                // also it's the maximum path length since 5.00.
-                let next =
-                    unsafe { widestring::WideCString::from_ptr_truncate(p1 as *const _, 2048) };
-                user_data.1 = Some(next);
+                // Guard against null OR misaligned pointers. libunrar should pass
+                // a valid, aligned wide-string pointer here, but at volume-boundary
+                // crossings it can hand us null or a non-null pointer that is not
+                // aligned to `WideChar` (u32 on Unix, u16 on Windows).
+                // `from_ptr_truncate` copies via `ptr::copy_nonoverlapping`, whose
+                // safety precondition requires the source to be non-null AND aligned;
+                // violating it is UB and aborts the process under debug pointer
+                // checks. Skip in that case — libunrar still locates the next volume
+                // by path, and the `RAR_VOL_ASK => -1` stop path below is preserved.
+                let p = p1 as *const widestring::WideChar;
+                if !p.is_null() && (p as usize) % std::mem::align_of::<widestring::WideChar>() == 0
+                {
+                    // 2048 seems to be the buffer size in unrar,
+                    // also it's the maximum path length since 5.00.
+                    let next = unsafe { widestring::WideCString::from_ptr_truncate(p, 2048) };
+                    user_data.1 = Some(next);
+                }
                 match p2 {
                     // Next volume not found. -1 means stop
                     native::RAR_VOL_ASK => -1,
@@ -526,8 +538,14 @@ impl<M: ProcessMode> Internal<M> {
                 }
             }
             native::UCM_PROCESSDATA => {
-                let raw_slice = std::ptr::slice_from_raw_parts(p1 as *const u8, p2 as _);
-                M::process_data(&mut user_data.0, unsafe { &*raw_slice as &_ });
+                // Guard against null pointer or zero-count callbacks that
+                // libunrar may send at volume-boundary crossings. Creating a
+                // Rust reference from a null pointer is always UB (even for
+                // zero-length slices), so we skip the call in that case.
+                if p1 != 0 && p2 > 0 {
+                    let raw_slice = std::ptr::slice_from_raw_parts(p1 as *const u8, p2 as usize);
+                    M::process_data(&mut user_data.0, unsafe { &*raw_slice as &_ });
+                }
                 0
             }
             _ => 0,
