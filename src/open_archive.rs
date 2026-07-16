@@ -496,6 +496,29 @@ impl ProcessMode for Test {
     fn process_data(_: &mut Self::Output, _: &[u8]) {}
 }
 
+/// Reads a NUL-terminated (or `max_len`-truncated) wide string starting at `p`, without
+/// requiring `p` to be aligned for `u16`.
+///
+/// # Safety
+///
+/// `p` must be valid for reads of up to `max_len` consecutive `u16` values (each read
+/// individually via [`std::ptr::read_unaligned`], so no alignment is required), unless a NUL
+/// value is encountered first, in which case reading stops there.
+unsafe fn read_wide_cstring_unaligned(p: *const u16, max_len: usize) -> widestring::WideCString {
+    if p.is_null() || max_len == 0 {
+        return widestring::WideCString::default();
+    }
+    let mut buf = Vec::with_capacity(max_len.min(256));
+    for i in 0..max_len {
+        let value = unsafe { p.add(i).read_unaligned() };
+        buf.push(value);
+        if value == 0 {
+            break;
+        }
+    }
+    widestring::WideCString::from_vec_truncate(buf)
+}
+
 struct Internal<M: ProcessMode> {
     marker: std::marker::PhantomData<M>,
 }
@@ -515,8 +538,11 @@ impl<M: ProcessMode> Internal<M> {
             native::UCM_CHANGEVOLUMEW => {
                 // 2048 seems to be the buffer size in unrar,
                 // also it's the maximum path length since 5.00.
-                let next =
-                    unsafe { widestring::WideCString::from_ptr_truncate(p1 as *const _, 2048) };
+                // The native library does not guarantee 2-byte alignment for this buffer, so
+                // read it element-wise with `ptr::read_unaligned` rather than via
+                // `WideCString::from_ptr_truncate` (which bulk-copies through
+                // `slice::from_raw_parts` and requires alignment).
+                let next = unsafe { read_wide_cstring_unaligned(p1 as *const u16, 2048) };
                 user_data.1 = Some(next);
                 match p2 {
                     // Next volume not found. -1 means stop
