@@ -517,18 +517,28 @@ impl<M: ProcessMode> Internal<M> {
                 // a valid, aligned wide-string pointer here, but at volume-boundary
                 // crossings it can hand us null or a non-null pointer that is not
                 // aligned to `WideChar` (u32 on Unix, u16 on Windows).
-                // `from_ptr_truncate` copies via `ptr::copy_nonoverlapping`, whose
-                // safety precondition requires the source to be non-null AND aligned;
-                // violating it is UB and aborts the process under debug pointer
-                // checks. Skip in that case — libunrar still locates the next volume
-                // by path, and the `RAR_VOL_ASK => -1` stop path below is preserved.
+                // Reading through such a pointer is UB and aborts under the debug
+                // pointer checks. Skip — libunrar still finds the volume by path,
+                // and the `RAR_VOL_ASK => -1` stop path below is preserved.
+                // `from_ptr_truncate` is also unusable here: it bulk-copies all
+                // 2048 elements before truncating at the nul, over-reading past
+                // the (usually much shorter) volume-name buffer. Scan instead.
                 let p = p1 as *const widestring::WideChar;
                 if !p.is_null() && (p as usize) % std::mem::align_of::<widestring::WideChar>() == 0
                 {
                     // 2048 seems to be the buffer size in unrar,
                     // also it's the maximum path length since 5.00.
-                    let next = unsafe { widestring::WideCString::from_ptr_truncate(p, 2048) };
-                    user_data.1 = Some(next);
+                    let mut chars: Vec<widestring::WideChar> = Vec::new();
+                    for i in 0..2048usize {
+                        // SAFETY: `p` is non-null and aligned; every element up to
+                        // and including the nul lies inside unrar's buffer.
+                        let ch = unsafe { p.add(i).read() };
+                        if ch == 0 {
+                            break;
+                        }
+                        chars.push(ch);
+                    }
+                    user_data.1 = Some(widestring::WideCString::from_vec_truncate(chars));
                 }
                 match p2 {
                     // Next volume not found. -1 means stop
