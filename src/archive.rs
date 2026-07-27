@@ -69,7 +69,7 @@ impl<'a> Archive<'a> {
             comments: None,
         }
     }
-    
+
     /// Creates an `Archive` object to operate on a plain non-encrypted RAR archive.
     /// as opposed to [`new`](struct.Archive.html#method.new) that borrows from its input, this function takes ownership of it,
     /// potentially cloning if the input is a reference.
