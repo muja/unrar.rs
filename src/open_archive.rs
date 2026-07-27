@@ -507,9 +507,7 @@ impl OpenArchive<Process, CursorBeforeFile> {
                     }
                     _ => {
                         let err = UnrarError::from(process_result, When::Process);
-                        let _ = tx.send(StreamMessage::Error(
-                            UnrarError::from(err.code, err.when),
-                        ));
+                        let _ = tx.send(StreamMessage::Error(UnrarError::from(err.code, err.when)));
                         Err(err)
                     }
                 }
@@ -597,9 +595,7 @@ fn handle_volume_change(
     p1: native::LPARAM,
     p2: native::LPARAM,
 ) -> c_int {
-    *volume = Some(unsafe {
-        widestring::WideCString::from_ptr_truncate(p1 as *const _, 2048)
-    });
+    *volume = Some(unsafe { widestring::WideCString::from_ptr_truncate(p1 as *const _, 2048) });
     // p2 carries RAR_VOL_ASK (0) or RAR_VOL_NOTIFY (1)
     // Return -1 for ASK (next volume not found), 0 otherwise
     if p2 == native::RAR_VOL_ASK {
@@ -712,7 +708,10 @@ impl fmt::Debug for StreamingEntry {
         f.debug_struct("StreamingEntry")
             .field("abort", &self.abort.load(Ordering::Relaxed))
             .field("discard", &self.discard.load(Ordering::Relaxed))
-            .field("decompressed_bytes", &self.decompressed_bytes.load(Ordering::Relaxed))
+            .field(
+                "decompressed_bytes",
+                &self.decompressed_bytes.load(Ordering::Relaxed),
+            )
             .field("buffer_len", &self.buffer.len())
             .field("buffer_pos", &self.buffer_pos)
             .field("done", &self.done)
@@ -876,9 +875,7 @@ impl<M: ProcessMode> Internal<M> {
         }
         let user_data = unsafe { &mut *(user_data as *mut Userdata<M::Output>) };
         match msg {
-            native::UCM_CHANGEVOLUMEW => {
-                handle_volume_change(&mut user_data.1, p1, p2)
-            }
+            native::UCM_CHANGEVOLUMEW => handle_volume_change(&mut user_data.1, p1, p2),
             native::UCM_PROCESSDATA => {
                 if p2 <= 0 {
                     return 0; // Ignore zero/negative-length chunks

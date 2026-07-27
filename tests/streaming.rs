@@ -126,11 +126,17 @@ fn test_streaming_solid_discard_completes() {
     let archive = Archive::new("data/solid.rar")
         .open_for_processing()
         .unwrap();
-    assert!(archive.is_solid(), "Expected solid.rar to be a solid archive");
+    assert!(
+        archive.is_solid(),
+        "Expected solid.rar to be a solid archive"
+    );
 
     let header = archive.read_header().unwrap().unwrap();
     let entry_size = header.entry().unpacked_size;
-    assert!(entry_size > 1, "Entry must be larger than 1 byte for this test");
+    assert!(
+        entry_size > 1,
+        "Entry must be larger than 1 byte for this test"
+    );
 
     let mut reader = header.read_streaming();
     let mut buf = [0u8; 1];
@@ -138,8 +144,9 @@ fn test_streaming_solid_discard_completes() {
 
     reader.set_discard();
 
-    let (_archive, decompressed) =
-        reader.finish().expect("finish() should succeed after set_discard()");
+    let (_archive, decompressed) = reader
+        .finish()
+        .expect("finish() should succeed after set_discard()");
     // After discard-mode finish, decompressed_bytes should reflect the full entry
     assert!(
         decompressed >= entry_size,
@@ -172,7 +179,10 @@ fn test_streaming_abort_on_limit() {
     let header = archive.read_header().unwrap().unwrap();
     let entry_size = header.entry().unpacked_size;
     let limit = 5u64;
-    assert!(entry_size > limit, "Entry must be larger than limit for this test");
+    assert!(
+        entry_size > limit,
+        "Entry must be larger than limit for this test"
+    );
 
     let mut reader = header.read_streaming();
     let mut data = Vec::new();
@@ -196,5 +206,8 @@ fn test_streaming_error_on_encrypted_without_password() {
         "Reading encrypted entry without password should fail"
     );
     let finish_result = reader.finish();
-    assert!(finish_result.is_err(), "finish() should propagate the error");
+    assert!(
+        finish_result.is_err(),
+        "finish() should propagate the error"
+    );
 }
