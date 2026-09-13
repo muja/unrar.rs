@@ -12,6 +12,10 @@ fn main() {
     if windows {
         println!("cargo:rustc-flags=-lpowrprof");
         println!("cargo:rustc-link-lib=shell32");
+        // pathfn.cpp reads the registry to find the RAR data directory and system.cpp asks
+        // about the process token; both are here. Without it an MSVC link of a crate that
+        // depends on this one ends in unresolved RegOpenKeyExW and OpenProcessToken.
+        println!("cargo:rustc-link-lib=advapi32");
         if target_env == "gnu" {
             println!("cargo:rustc-link-lib=pthread");
         }
