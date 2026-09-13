@@ -1,14 +1,24 @@
+use std::env;
+
 fn main() {
-    if cfg!(windows) {
+    // A build script is compiled for the host, so `cfg!(windows)` here answers for the machine
+    // doing the building rather than the one being built for. Cross compiling reads the wrong
+    // answer out of it: a Windows host building for Android compiled isnt.cpp and stopped at
+    // wbemidl.h, and a Linux host building for Windows left isnt.cpp out of a library that
+    // needs it. `CARGO_CFG_TARGET_*` is what a build script has to ask instead.
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+    let windows = target_os == "windows";
+    if windows {
         println!("cargo:rustc-flags=-lpowrprof");
         println!("cargo:rustc-link-lib=shell32");
-        if cfg!(target_env = "gnu") {
+        if target_env == "gnu" {
             println!("cargo:rustc-link-lib=pthread");
         }
     } else {
         println!("cargo:rustc-link-lib=pthread");
     }
-    let files: Vec<String> = [
+    let mut names = vec![
         "strlist",
         "strfn",
         "pathfn",
@@ -21,8 +31,6 @@ fn main() {
         "arcread",
         "unicode",
         "system",
-        #[cfg(windows)]
-        "isnt",
         "crypt",
         "crc",
         "rawread",
@@ -56,7 +64,11 @@ fn main() {
         "scantree",
         "dll",
         "qopen",
-    ].iter().map(|&s| format!("vendor/unrar/{s}.cpp")).collect();
+    ];
+    if windows {
+        names.push("isnt");
+    }
+    let files: Vec<String> = names.iter().map(|&s| format!("vendor/unrar/{s}.cpp")).collect();
     cc::Build::new()
         .cpp(true) // Switch to C++ library compilation.
         .opt_level(2)
