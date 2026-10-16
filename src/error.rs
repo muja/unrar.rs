@@ -6,7 +6,6 @@ use std::ffi;
 use std::fmt;
 use std::result::Result;
 
-
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 #[repr(i32)]
 pub enum Code {

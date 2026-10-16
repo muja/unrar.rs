@@ -6,10 +6,14 @@ fn volume() {
     let archive = Archive::new("data/version.rar").open_for_listing().unwrap();
     assert_eq!(archive.volume_info(), VolumeInfo::None);
 
-    let archive = Archive::new("data/archive.part1.rar").open_for_listing().unwrap();
+    let archive = Archive::new("data/archive.part1.rar")
+        .open_for_listing()
+        .unwrap();
     assert_eq!(archive.volume_info(), VolumeInfo::First);
 
-    let archive = Archive::new("data/100M.part00002.rar").open_for_listing().unwrap();
+    let archive = Archive::new("data/100M.part00002.rar")
+        .open_for_listing()
+        .unwrap();
     assert_eq!(archive.volume_info(), VolumeInfo::Subsequent);
 }
 
@@ -24,7 +28,9 @@ fn locked() {
 
 #[test]
 fn recovery_record() {
-    let archive = Archive::new("data/recovery-record.rar").open_for_listing().unwrap();
+    let archive = Archive::new("data/recovery-record.rar")
+        .open_for_listing()
+        .unwrap();
     assert!(archive.has_recovery_record());
 
     let archive = Archive::new("data/version.rar").open_for_listing().unwrap();
@@ -42,7 +48,9 @@ fn archive_comment() {
 
 #[test]
 fn encrypted_headers() {
-    let archive = Archive::new("data/comment-hpw-password.rar").open_for_listing().unwrap();
+    let archive = Archive::new("data/comment-hpw-password.rar")
+        .open_for_listing()
+        .unwrap();
     assert!(archive.has_encrypted_headers());
 
     let archive = Archive::new("data/version.rar").open_for_listing().unwrap();
