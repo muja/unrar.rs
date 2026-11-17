@@ -1,5 +1,11 @@
 #![no_std]
 
+// Link the `unrars` crate (whose exported symbols back the `extern` block
+// below) even though none of its items are referenced from this crate.
+#[cfg(feature = "unrars")]
+#[allow(unused_extern_crates)]
+extern crate unrars;
+
 #[cfg(feature = "std")]
 extern crate std;
 
@@ -204,11 +210,11 @@ pub struct OpenArchiveDataEx {
 
 // ----------------- BINDINGS ----------------- //
 
-#[link(name = "unrar", kind = "static")]
-#[cfg_attr(all(windows, target_env = "gnu"), link(name = "stdc++", kind = "static", modifiers = "-bundle"))]
-#[cfg_attr(target_os = "macos", link(name = "c++"))]
-#[cfg_attr(any(target_os = "freebsd", target_os = "openbsd"), link(name = "c++"))]
-#[cfg_attr(any(target_os = "linux", target_os = "netbsd"), link(name = "stdc++"))]
+#[cfg_attr(not(feature = "unrars"), link(name = "unrar", kind = "static"))]
+#[cfg_attr(all(not(feature = "unrars"), windows, target_env = "gnu"), link(name = "stdc++", kind = "static", modifiers = "-bundle"))]
+#[cfg_attr(all(not(feature = "unrars"), target_os = "macos"), link(name = "c++"))]
+#[cfg_attr(all(not(feature = "unrars"), any(target_os = "freebsd", target_os = "openbsd")), link(name = "c++"))]
+#[cfg_attr(all(not(feature = "unrars"), any(target_os = "linux", target_os = "netbsd")), link(name = "stdc++"))]
 extern "C" {
     pub fn RAROpenArchive(data: *const OpenArchiveData) -> *const Handle;
 
@@ -374,6 +380,10 @@ impl OpenArchiveDataEx {
 mod tests {
     #[test]
     fn test_version() {
-        assert_eq!(unsafe { super::RARGetDllVersion() }, 9);
+        #[cfg(feature = "unrars")]
+        let expected = 11; // RAR_DLL_VERSION reported by the `unrars` crate
+        #[cfg(not(feature = "unrars"))]
+        let expected = 9; // RAR_DLL_VERSION reported by the vendored unrar
+        assert_eq!(unsafe { super::RARGetDllVersion() }, expected);
     }
 }

@@ -1,4 +1,18 @@
 fn main() {
+    // The vendored unrar C++ sources are only compiled when the `vendored`
+    // feature is enabled. With the `unrars` feature (and no `vendored`,
+    // e.g. default-features = false) there is no C++ to compile, the `cc`
+    // dependency is not pulled in, and this build script is a no-op.
+    #[cfg(feature = "vendored")]
+    {
+        if std::env::var("CARGO_FEATURE_UNRARS").is_err() {
+            compile_vendored();
+        }
+    }
+}
+
+#[cfg(feature = "vendored")]
+fn compile_vendored() {
     if cfg!(windows) {
         println!("cargo:rustc-flags=-lpowrprof");
         println!("cargo:rustc-link-lib=shell32");
