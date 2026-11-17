@@ -11,6 +11,18 @@ license = "MIT OR Apache-2.0"
 description = "list and extract RAR archives"
 repository = "https://github.com/muja/unrar.rs"
 
+[features]
+default = ["vendored"]
+# The default backend: compile the vendored unrar C++ sources via `cc`
+# (forwarded from unrar_sys).
+vendored = ["unrar_sys/vendored"]
+# Use the pure-Rust `unrars` implementation of the libunrar C ABI instead of
+# the vendored C++ sources (forwarded from unrar_sys). To also drop the C++
+# toolchain and the `cc` dependency entirely, combine this with
+# default-features = false, e.g.
+# `unrar = { version = "0.5", default-features = false, features = ["unrars"] }`.
+unrars = ["unrar_sys/unrars"]
+
 [dependencies]
 regex = "1"
 bitflags = "2"
@@ -19,6 +31,11 @@ widestring = "1"
 [dependencies.unrar_sys]
 path = "unrar_sys"
 version = "0.5"
+# Do not take unrar_sys' defaults (std, vendored); `std` is required for this
+# crate to compile and is enabled unconditionally below, while the backend
+# (`vendored` or `unrars`) is selected by this crate's own features.
+default-features = false
+features = ["std"]
 
 [dev-dependencies]
 tempfile = "3.12.0"
