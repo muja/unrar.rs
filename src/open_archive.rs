@@ -647,7 +647,10 @@ impl fmt::Display for FileHeader {
 impl From<native::HeaderDataEx> for FileHeader {
     fn from(header: native::HeaderDataEx) -> Self {
         let filename = unsafe {
-            widestring::WideCString::from_ptr_truncate(header.filename_w.as_ptr() as *const _, 1024)
+            widestring::WideCString::from_ptr_truncate(
+                std::ptr::addr_of!(header.filename_w[0]) as *const _,
+                1024,
+            )
         };
 
         FileHeader {
