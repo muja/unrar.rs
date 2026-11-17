@@ -10,14 +10,24 @@ repository = "https://github.com/muja/unrar.rs"
 edition = "2021"
 
 [features]
-default = ["std"]
+default = ["std", "vendored"]
 std = ["libc/std", "winapi/std"]
+# Compile the vendored unrar C++ sources via `cc`. This is the default backend.
+# Disable it (e.g. with default-features = false) and enable `unrars` instead
+# to drop the C++ toolchain requirement, the `cc` dependency and the work done
+# by the build script.
+vendored = ["dep:cc"]
+# Replace the vendored unrar C++ sources with the pure-Rust `unrars` crate
+# (a libunrar-compatible C ABI built on top of `rars`). This avoids compiling
+# and linking the C++ code, but relies on the `rars` implementation instead.
+unrars = ["dep:unrars"]
 
 [dependencies]
 libc = { version = "0.2", default-features = false }
+unrars = { version = "0.1.2", optional = true, default-features = false }
 
 [build-dependencies]
-cc = "1"
+cc = { version = "1", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["minwindef", "ntdef"] }
