@@ -376,4 +376,44 @@ mod tests {
     fn test_version() {
         assert_eq!(unsafe { super::RARGetDllVersion() }, 9);
     }
+
+    // The libunrar C header declares the RAR* structs under `#pragma pack(1)`,
+    // so it uses the packed layout for libunrar. Without the packed representation
+    // the layout of `OpenArchiveDataEx` diverges (on 64-bit targets `comment_buffer_w`
+    // moves from offset 68 to 72 and trailing padding is added), so verify that every
+    // field sits at the plain sum of the sizes of the fields before it and that
+    // the struct has no trailing padding.
+    #[test]
+    fn open_archive_data_ex_is_packed() {
+        use super::{Callback, LPARAM, OpenArchiveDataEx};
+        use core::mem::{offset_of, size_of};
+
+        // `pack(1)` size = sum of the sizes of all preceding fields.
+        let packed_comment_buffer_w = size_of::<*const super::c_char>() // archive_name
+            + size_of::<*const super::wchar_t>() // archive_name_w
+            + size_of::<super::c_uint>() // open_mode
+            + size_of::<super::c_uint>() // open_result
+            + size_of::<*mut super::c_char>() // comment_buffer
+            + size_of::<super::c_uint>() // comment_buffer_size
+            + size_of::<super::c_uint>() // comment_size
+            + size_of::<super::c_uint>() // comment_state
+            + size_of::<super::c_uint>() // flags
+            + size_of::<Option<Callback>>() // callback
+            + size_of::<LPARAM>() // user_data
+            + size_of::<super::c_uint>(); // op_flags
+        assert_eq!(
+            offset_of!(OpenArchiveDataEx, comment_buffer_w),
+            packed_comment_buffer_w,
+            "no padding may precede `comment_buffer_w` (pack(1))",
+        );
+
+        let packed_size = packed_comment_buffer_w
+            + size_of::<*mut super::wchar_t>() // comment_buffer_w
+            + size_of::<[super::c_uint; 25]>(); // reserved
+        assert_eq!(
+            size_of::<OpenArchiveDataEx>(),
+            packed_size,
+            "`OpenArchiveDataEx` must not have trailing padding (pack(1))",
+        );
+    }
 }
